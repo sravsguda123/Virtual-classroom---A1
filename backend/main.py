@@ -124,18 +124,53 @@ async def join_classroom(
     return {"message": "Joined classroom successfully","class_id":class_id}
 
 
-# @app.join("/notifications")
-# async def notifications(user: dict = Depends(verify_token)):
-#     pubsub = redis_client.pubsub()
-#     await pubsub.subscribe(user["id"])
-#     try:
-#         async for msg in pubsub.listen():
-#             if msg["type"] == "message":
-#                 yield json.loads(msg["data"])
-#     except asyncio.CancelledError:
-#         print(f"User {user['id']} unsubscribed.")
-#     finally:
-#         pubsub.close()
+@app.join("/ws/notifications")
+async def notifications_websocket(websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)  # Close due to missing token
+        return
+
+    try:
+        user = verify_token(f"Bearer {token}")  # Verify JWT
+    except HTTPException as e:
+        await websocket.close(code=1008)  # Close due to invalid token
+        return
+    user_id = user["id"]
+    await websocket.accept()
+
+    pubsub = redis_client.pubsub()
+    await pubsub.subscribe(user_id)  
+    async def listen_for_notifications():
+        """Listens for new messages from Redis and sends them to WebSocket."""
+        try:
+            async for msg in pubsub.listen():
+                if msg["type"] == "message":
+                    await websocket.send_text(msg["data"].decode('utf-8'))
+        except asyncio.CancelledError:
+            pass  # Task cancelled when user disconnects
+        finally:
+            pubsub.close()
+
+    listen_task = asyncio.create_task(listen_for_notifications())
+
+    try:
+        await websocket.receive_text()  # Keep connection alive
+    except WebSocketDisconnect:
+        print(f"User {user_id} disconnected.")
+    finally:
+        listen_task.cancel()
+        await listen_task
+        await websocket.close()
+        
+@app.post("/notify/{user_id}")
+async def send_notification(user_id: str, message: dict, admin: dict = Depends(verify_token)):
+    if admin["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Not authorized.Only Teachers")
+
+    
+    await redis_client.publish(user_id, json.dumps(message))
+    return {"status": "Notification sent", "user_id": user_id}
     
 
 

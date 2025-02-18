@@ -41,27 +41,11 @@ const JoinClassroom = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      setMessage("You are not authorized to join a classroom.");
+      setMessage("You are not authorized to view notifications.");
       return;
     }
 
-    try {
-      const response = await axios.post(
-        `http://127.0.0.1:8000/notification`,
-        //not done yet
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      navigate(`/notification`);
-    } 
-    catch (error) {
-      console.error(error);
-      setMessage("Failed to move to notifications page");
-    }
+    navigate(`/notifications?token=${token}`);
   }
   return (
     <div>

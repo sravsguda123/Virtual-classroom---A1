@@ -66,3 +66,45 @@ const Chatroom = () => {
 };
 
 export default Chatroom;
+
+
+
+
+//better UI
+
+
+// const Chatroom = ({ id, messages, message, setMessage, sendMessage }) => {
+//     return (
+//       <div className="max-w-lg mx-auto p-4 border rounded-lg shadow-md bg-white">
+//         <h2 className="text-xl font-bold text-center mb-4">Chatroom: {id}</h2>
+  
+//         <div className="h-64 overflow-y-auto p-3 bg-gray-100 rounded-lg space-y-2">
+//           {messages.map((msg, index) => (
+//             <p
+//               key={index}
+//               className="p-2 bg-blue-500 text-white rounded-lg w-fit max-w-xs"
+//             >
+//               {msg}
+//             </p>
+//           ))}
+//         </div>
+  
+//         <div className="flex mt-4 gap-2">
+//           <input
+//             type="text"
+//             value={message}
+//             onChange={(e) => setMessage(e.target.value)}
+//             className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+//             placeholder="Type a message..."
+//           />
+//           <button
+//             onClick={sendMessage}
+//             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+//           >
+//             Send
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   };
+  
