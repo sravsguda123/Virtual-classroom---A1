@@ -12,12 +12,13 @@ const Login = () => {
     try {
         const response = await axios.post("http://127.0.0.1:8000/login", { username, password });
         localStorage.setItem("token", response.data.token);
+        const token = response.data.token;
         const tokenPayload = JSON.parse(atob(response.data.token.split(".")[1])); // Decode base64 payload
         const role = tokenPayload.role;
   
         // Redirect based on role
         if (role === "teacher") {
-          navigate("/create-classroom");
+          navigate(`/create-classroom?token=${token}`);
         } else if (role === "student") {
           navigate("/join-classroom");
         } else {

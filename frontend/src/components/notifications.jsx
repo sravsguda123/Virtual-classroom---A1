@@ -39,7 +39,7 @@ const Notifications = () =>{
                 <div>
                   <h2>Notifications: {id}</h2>
                   <div>
-                    {messages.map((msg, index) => (
+                    {notifications.map((msg, index) => (
                       <p key={index}>{msg}</p>
                     ))}
                   </div>
