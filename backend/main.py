@@ -6,6 +6,16 @@ import redis.asyncio as redis
 import asyncio
 import json
 from fastapi.middleware.cors import CORSMiddleware
+import motor.motor_asyncio
+from datetime import datetime
+
+MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
+
+mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+db = mongo_client["virtual_classroom"]  # Ensure "virtual_classroom" is your actual database name
+
+# Define the collection
+collection = db["notifications"] 
 
 # Constants
 SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
@@ -19,11 +29,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend URL
+    allow_origins=["*"],  # Change "*" to specific origins if needed
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 redis_host = 'localhost'  # The host of the remote Redis service
 redis_port = 6379  # Usually 6379 for Redis # If authentication is required
@@ -44,6 +53,18 @@ classrooms_db = {
     "1": {"name": "csea", "teacher": "teacher_1", "students": []},
 }
 
+from bson import ObjectId
+
+def convert_mongo_document(doc):
+    """ Recursively converts MongoDB documents to JSON serializable format """
+    if isinstance(doc, list):
+        return [convert_mongo_document(item) for item in doc]
+    elif isinstance(doc, dict):
+        return {key: convert_mongo_document(value) for key, value in doc.items()}
+    elif isinstance(doc, ObjectId):
+        return str(doc)
+    else:
+        return doc
 
 from fastapi import Header
 
@@ -165,21 +186,19 @@ async def notifications_websocket(websocket: WebSocket):
         await listen_task
         await websocket.close()
         
-# @app.websocket("/notify/{user_id}")
-# async def send_notification(websocket: WebSocket,user_id: str, message: dict, admin: dict = Depends(verify_token)):
-#     if admin["role"] != "teacher":
-#         raise HTTPException(status_code=403, detail="Not authorized.Only Teachers")
 
-    
-#     await redis_client.publish(user_id, json.dumps(message))
-    
-#     try:
-#         while True:
-#             await websocket.receive_text()  # Keep the connection alive
-#     except WebSocketDisconnect:
-#         print(f"User {user_id} disconnected.")
-#     finally:
-#         await websocket.close()
+@app.get("/notification")
+async def get_notifications(user: dict = Depends(verify_token)):
+    notifications = await collection.find({"user_id": user["id"], "status": "unread"}).sort("timestamp", -1).to_list(100)
+    x=convert_mongo_document(notifications)
+    print(x)
+    return x 
+
+
+@app.put("/notificatio/read")
+async def mark_as_read(user: dict = Depends(verify_token)):
+    await collection.update_many({"user_id": user["id"], "status": "unread"}, {"$set": {"status": "read"}})
+    return {"message": "All notifications marked as read"}
 
 @app.websocket("/notify/{user_id}")
 async def send_notification(websocket: WebSocket, user_id: str):
@@ -206,9 +225,17 @@ async def send_notification(websocket: WebSocket, user_id: str):
         await websocket.close()
         return
     
+    
     try:
         while True:
             data = await websocket.receive_json()
+            data_to_store = {
+        "user_id": user_id,
+        "message": data,
+        "timestamp": datetime.utcnow().isoformat(),
+        "status": "unread",
+    }
+            await collection.insert_one(data_to_store)  # Store in MongoDB
             await redis_client.publish(user_id, json.dumps(data))
             await websocket.send_json({"status": "Notification sent", "user_id": user_id})
     
