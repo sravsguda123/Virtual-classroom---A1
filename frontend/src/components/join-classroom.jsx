@@ -49,10 +49,10 @@ const JoinClassroom = () => {
   }
   return (
     <div>
-      <h1>Join Classroom</h1>
+      <h1>Register Course</h1>
       <input
         type="text"
-        placeholder="Classroom ID"
+        placeholder="Course ID"
         value={classroomId}
         onChange={(e) => setClassroomId(e.target.value)}
       />

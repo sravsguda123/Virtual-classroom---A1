@@ -182,7 +182,7 @@ const Login = () => {
                 fontWeight: 500,
               }}
             >
-              Welcome to QuantumEdu
+              Welcome to Karupu Sundel
             </Typography>
             <Typography 
               variant="body1" 

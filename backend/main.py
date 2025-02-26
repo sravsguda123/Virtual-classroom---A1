@@ -8,6 +8,7 @@ import json
 from fastapi.middleware.cors import CORSMiddleware
 import motor.motor_asyncio
 from datetime import datetime
+from bson import ObjectId
 
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
@@ -16,6 +17,8 @@ db = mongo_client["virtual_classroom"]  # Ensure "virtual_classroom" is your act
 
 # Define the collection
 collection = db["notifications"] 
+users = db["users"]
+courses = db["courses"]
 
 # Constants
 SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
@@ -53,7 +56,7 @@ classrooms_db = {
     "1": {"name": "csea", "teacher": "teacher_1", "students": []},
 }
 
-from bson import ObjectId
+
 
 def convert_mongo_document(doc):
     """ Recursively converts MongoDB documents to JSON serializable format """
@@ -102,10 +105,36 @@ class CreateClassroomRequest(BaseModel):
 class JoinClassroomRequest(BaseModel):
     class_id: str
 
+
+users.insert_one({
+   "user_id": "teacher1",
+   "password": "password",
+   "role": "teacher"
+})
+
+
+users.insert_one({
+   "user_id": "student1",
+   "password": "password",
+   "role": "student"
+})
+
+users.insert_one({
+   "user_id": "student2",
+   "password": "password",
+   "role": "student"
+})
+
+print("Users inserted successfully!")
+
 @app.post("/login")
 async def login(request: LoginRequest):
-    user = users_db.get(request.username)
-    if not user or user["password"] != request.password:
+    user_list = await users.find({"user_id": request.username}).to_list(1)
+    print(user_list)
+    if not user_list:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user = user_list[0]
+    if user["password"] != request.password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = jwt.encode({"id": request.username, "role": user["role"]}, SECRET_KEY, algorithm="HS256")
     return {"token": token}
@@ -114,24 +143,70 @@ async def login(request: LoginRequest):
 async def create_classroom(request: CreateClassroomRequest, user: dict = Depends(verify_token)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can create classrooms")
-    
-    class_id = classrooms_db.update({
-        "name": request.name,
+    clas = {
+        "class_id": request.name,
         "teacher": user["id"],
         "students": []
+    }
+
+    result = await courses.insert_one(clas)  # Insert into MongoDB
+    return {"class_id": str(result.inserted_id)}
+    
+    # class_id = classrooms_db.update({
+    #     "name": request.name,
+    #     "teacher": user["id"],
+    #     "students": []
         
-    })
+    # })
 
-    return {"class_id": str(id)}
+    # return {"class_id": str(id)}
 
+# @app.post("/join_classroom")
+# async def join_classroom(
+#     request: JoinClassroomRequest, user: dict = Depends(verify_token)
+# ):
+#     class_id = request.class_id
+    
+#     # Validate classroom existence
+#     classroom = classrooms_db.get(class_id)
+#     if not classroom:
+#         raise HTTPException(status_code=404, detail="Classroom not found")
+
+#     # Check if the user is already a member
+#     if user["id"] in classroom["students"]:
+#         return {"message": "Already joined classroom"}
+
+#     # Add the user to the students list
+#     classroom["students"].append(user["id"])
+
+#     return {"message": "Joined classroom successfully","class_id":class_id}
+@app.get("/students_in_courses/{course_id}")
+async def students_in_courses(course_id: str):
+    # Fetch the classroom from MongoDB
+
+    classroom = await courses.find_one({"class_id": course_id})
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+    # Fetch the students from MongoDB
+    print(classroom["students"])
+    return {"students": classroom["students"]}
+    
+    
 @app.post("/join_classroom")
 async def join_classroom(
     request: JoinClassroomRequest, user: dict = Depends(verify_token)
 ):
+    documents = await courses.find().to_list(None)  # Fetch all documents
+    for doc in documents:
+        print(doc)
     class_id = request.class_id
-    
+    # try:
+    #     class_id = ObjectId(request.class_id)  # Convert to ObjectId
+    # except:
+    #     raise HTTPException(status_code=400, detail="Invalid class ID format")
+
     # Validate classroom existence
-    classroom = classrooms_db.get(class_id)
+    classroom = await courses.find_one({"class_id": class_id})
     if not classroom:
         raise HTTPException(status_code=404, detail="Classroom not found")
 
@@ -140,9 +215,12 @@ async def join_classroom(
         return {"message": "Already joined classroom"}
 
     # Add the user to the students list
-    classroom["students"].append(user["id"])
+    await courses.update_one(
+        {"class_id": class_id},
+        {"$addToSet": {"students": user["id"]}}  # Ensures no duplicates
+    )
 
-    return {"message": "Joined classroom successfully","class_id":class_id}
+    return {"message": "Joined classroom successfully", "class_id": request.class_id}
 
 
 @app.websocket("/ws/notifications")
