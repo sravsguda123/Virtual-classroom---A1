@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile
 from redis import Redis
 import jwt
 from pydantic import BaseModel
@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import motor.motor_asyncio
 from datetime import datetime
 from bson import ObjectId
+from typing import List, Optional
+from pydantic import BaseModel, HttpUrl
+import shutil
 
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
@@ -19,6 +22,8 @@ db = mongo_client["virtual_classroom"]  # Ensure "virtual_classroom" is your act
 collection = db["notifications"] 
 users = db["users"]
 courses = db["courses"]
+assignments=db["assignments"]
+submissions=db["submissions"]
 
 # Constants
 SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
@@ -44,7 +49,11 @@ redis_port = 6379  # Usually 6379 for Redis # If authentication is required
 redis_client = redis.Redis(
     host=redis_host,
     port=redis_port,)
-
+@app.on_event("startup")
+async def show_routes():
+    from fastapi.routing import APIRoute
+    routes = [route.path for route in app.router.routes if isinstance(route, APIRoute)]
+    print("Registered routes:", routes)
 
 users_db = {
     "teacher1": {"username": "teacher1", "password": "pass123", "role": "teacher"},
@@ -104,7 +113,22 @@ class CreateClassroomRequest(BaseModel):
     name: str
 class JoinClassroomRequest(BaseModel):
     class_id: str
+class AssignmentCreate(BaseModel):
+    title: str
+    description: str
+    submission_type: str  # "file", "text", "link", "multiple_choice"
+    due_date: str
+    course_id:str
 
+class AssignmentResponse(AssignmentCreate):
+    id: str
+    teacher_id: str
+
+class SubmissionCreate(BaseModel):
+    text_content: Optional[str] = None
+    file: Optional[UploadFile] = None
+    link: Optional[HttpUrl] = None
+    mcq_answers: Optional[dict] = None
 
 users.insert_one({
    "user_id": "teacher1",
@@ -127,6 +151,28 @@ users.insert_one({
 
 print("Users inserted successfully!")
 
+
+
+@app.get("/assignments/{course_id}")
+async def get_assignment(course_id: str):
+    assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
+
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return convert_mongo_document(assignment)
+
+@app.get("/teacher_see_submissions/{assignment_id}")
+async def view_submissions(assignment_id: str, current_user: dict = Depends(verify_token)):
+   if db is None:
+      raise HTTPException(status_code=500, detail="Database connection failed")
+   if current_user["role"] != "teacher":
+      raise HTTPException(status_code=403, detail="Access denied")
+   submissions = list(db.submissions.find({"assignment_id": ObjectId(assignment_id)}))
+   for submission in submissions:
+      submission["_id"] = str(submission["_id"])
+      submission["assignment_id"] = str(submission["assignment_id"])
+   return submissions
+
 @app.post("/login")
 async def login(request: LoginRequest):
     user_list = await users.find({"user_id": request.username}).to_list(1)
@@ -138,6 +184,18 @@ async def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = jwt.encode({"id": request.username, "role": user["role"]}, SECRET_KEY, algorithm="HS256")
     return {"token": token}
+
+@app.post("/create_assignments")
+async def create_assignments(assignment: AssignmentCreate, user: dict = Depends(verify_token)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create assignments")
+
+    teacher_id = user["id"]
+    new_assignment = assignment.model_dump()
+    new_assignment["teacher_id"] = teacher_id
+    result = await assignments.insert_one(new_assignment)
+    return {"message": "Created assignment successfully", "assignment_id": str(result.inserted_id)}
+
 
 @app.post("/create_classroom")
 async def create_classroom(request: CreateClassroomRequest, user: dict = Depends(verify_token)):
@@ -316,6 +374,45 @@ async def send_notification(websocket: WebSocket, user_id: str):
             await collection.insert_one(data_to_store)  # Store in MongoDB
             await redis_client.publish(user_id, json.dumps(data))
             await websocket.send_json({"status": "Notification sent", "user_id": user_id})
+    
+    except WebSocketDisconnect:
+        print(f"Client {user_id} disconnected")
+    
+@app.websocket("/notify_all/{course_id}")
+async def send_notification_to_all(websocket: WebSocket, course_id: str):
+    await websocket.accept()
+    
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)  # Close connection due to missing token
+        raise HTTPException(status_code=401, detail="Token is required")
+
+    # Verify the token
+    try:
+        classroom = await courses.find_one({"class_id": course_id})
+        user = verify_token(f"Bearer {token}") 
+        print(user["id"])# Add "Bearer " prefix
+    except HTTPException as e:
+        await websocket.close(code=1008)  # Close connection due to invalid token
+        raise e  # Raise the HTTPException
+    
+    # Verify if the user is an admin (you might need to pass token via headers or query parameters)
+    # You might need an async version if it's an async function
+    
+    if user["role"] != "teacher":
+        await websocket.send_json({"error": "Not authorized. Only teachers can send gmeet notification."})
+        await websocket.close()
+        return
+    
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+
+            for user_id in classroom["students"]:
+                
+                await redis_client.publish(user_id, json.dumps(data))
+                await websocket.send_json({"status": "Notification sent", "user_id": user_id})
     
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
