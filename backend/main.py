@@ -42,7 +42,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
 )
-redis_host = 'localhost'  # The host of the remote Redis service
+redis_host = "localhost"  # The host of the remote Redis service
 redis_port = 6379  # Usually 6379 for Redis # If authentication is required
 
 # Connect to the remote Redis API
