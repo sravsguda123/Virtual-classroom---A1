@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams , useNavigate } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
 
 const Chatroom = () => {
+  const navigate = useNavigate();
   const location = useLocation(); 
   const params = new URLSearchParams(location.search);
   const { id } = useParams();
@@ -46,7 +47,10 @@ const Chatroom = () => {
       setMessage("");
     }
   };
+  const handleResources = () => {
+    navigate("/resourses");
 
+  }
   return (
     <div>
       <h2>Chatroom: {id}</h2>
@@ -61,6 +65,8 @@ const Chatroom = () => {
         onChange={(e) => setMessage(e.target.value)}
       />
       <button onClick={sendMessage}>Send</button>
+
+      <button onClick={handleResources}>Resources</button>
     </div>
   );
 };
