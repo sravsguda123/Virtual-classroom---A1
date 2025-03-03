@@ -1,13 +1,32 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
+import {
+  Container,
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Snackbar,
+  Alert,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  List,
+  ListItem,
+  ListItemText,
+  Divider
+} from "@mui/material";
 
 export default function TeacherDashboard() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  
+
   const [classroomName, setClassroomName] = useState("");
-  const [classroomForStudents, setClassroomForStudents] = useState(""); // Separate state for fetching students
+  const [classroomForStudents, setClassroomForStudents] = useState("");
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState("");
   const [notification, setNotification] = useState("");
@@ -16,60 +35,65 @@ export default function TeacherDashboard() {
   const [assignmentid, setAssignmentId] = useState("");
   const token = params.get("token");
 
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [submissionType, setSubmissionType] = useState("text");
-    const [dueDate, setDueDate] = useState("");
-    const [messaget, setMessageT] = useState("");
-    const [coursef, setCourseF] = useState("");
-    const [assignments, setAssignments] = useState([]);
-    const [course_id, setCourseId] = useState("");
-    
-    const seeAssignments = async () => {
-        try{
-            const response = await axios.get(`http:////127.0.0.1:8000/assignments/${course_id}`);
-            setAssignments(response.data);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submissionType, setSubmissionType] = useState("text");
+  const [dueDate, setDueDate] = useState("");
+  const [messaget, setMessageT] = useState("");
+  const [coursef, setCourseF] = useState("");
+  const [assignments, setAssignments] = useState([]);
+  const [course_id, setCourseId] = useState("");
+
+  const seeAssignments = async () => {
+    try {
+      const response = await axios.get(`http://127.0.0.1:8000/assignments/${course_id}`);
+      setAssignments(response.data);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error fetching assignments.");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:8000/create_assignments",
+        {
+          title,
+          description,
+          submission_type: submissionType,
+          due_date: dueDate,
+          course_id: coursef
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
         }
-        catch (error) {
-            console.error(error);
-            setMessage("Error fetching assignments.");
+      );
+      setMessage(`Assignment created successfully! ID: ${response.data.assignment_id}`);
+      setAssignmentId(response.data.assignment_id);
+    } catch (error) {
+      setMessage("Error creating assignment");
     }
-  }
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await axios.post( "http://127.0.0.1:8000/create_assignments", {
-                title,
-                description,
-                submission_type: submissionType,
-                due_date: dueDate,
-                course_id: coursef
-            }, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            });
-            setMessage(`Assignment created successfully! ID: ${response.data.assignment_id}`);
-            setAssignmentId(response.data.assignment_id);
-        } catch (error) {
-            setMessage("Error creating assignment");
+  };
+
+  const notifyStudents = async () => {
+    try {
+      const response = await axios.get(`http://127.0.0.1:8000/notify_all/${course_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
         }
-      }
-    const notifyStudents = async () => {
-        try {
-          const response = await axios.get(`http://127.0.0.1:8000/notify_all/${course_id}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          setMessage(`${response.data.status}`);
+      });
+      setMessage(`${response.data.status}`);
+    } catch (error) {
+      console.error(error);
     }
-    catch (error) {
-      console.error(error); 
-    }
-  }
+  };
+
   const getAllEnrolledStudents = async () => {
     try {
       if (!classroomForStudents) {
@@ -80,7 +104,6 @@ export default function TeacherDashboard() {
         `http://127.0.0.1:8000/students_in_courses/${classroomForStudents}`
       );
       console.log(response.data);
-      
       if (response.data.students) {
         setStudents(response.data.students);
       } else {
@@ -97,7 +120,6 @@ export default function TeacherDashboard() {
       setMessage("You are not authorized to create a classroom.");
       return;
     }
-
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/create_classroom",
@@ -105,11 +127,10 @@ export default function TeacherDashboard() {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+            "Content-Type": "application/json"
+          }
         }
       );
-
       setMessage(`Course created successfully! ID: ${response.data.class_id}`);
       setClassroomName("");
     } catch (error) {
@@ -119,152 +140,226 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <div className="flex flex-col items-center p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Teacher Dashboard</h1>
+    <Box sx={{
+      background: "linear-gradient(-45deg, #1a0033, #2a0944, #3b185f, #240046)",
+      minHeight: "100vh",
+      py: 2,
+      px: 2,
+      color: "white"
+    }}>
+      <Container maxWidth="md">
+        <Typography variant="h5" align="center" sx={{ mb: 3, fontFamily: "'Playfair Display', serif" }}>
+          Teacher Dashboard
+        </Typography>
 
-      {/* Classroom Creation Section */}
-      <div className="mb-6 bg-white p-4 rounded shadow-md w-80">
-        <h2 className="text-lg font-semibold">Create a Course</h2>
-        <input
-          type="text"
-          placeholder="Classroom Name"
-          value={classroomName}
-          onChange={(e) => setClassroomName(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-        <button
-          onClick={handleCreateClassroom}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full"
-        >
-          Create Classroom
-        </button>
-        {message && <p className="text-sm text-gray-700 mt-2">{message}</p>}
-      </div>
+        {/* Create Course Section */}
+        <Card sx={{ mb: 3, backgroundColor: "rgba(26,0,51,0.8)", backdropFilter: "blur(8px)", borderRadius: 1, border: "1px solid rgba(157, 68, 192, 0.4)" }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="subtitle1" sx={{ mb: 1, fontFamily: "'Playfair Display', serif" }}>
+              Create a Course
+            </Typography>
+            <TextField 
+              size="small"
+              fullWidth 
+              variant="outlined"
+              placeholder="Classroom Name" 
+              value={classroomName}
+              onChange={(e) => setClassroomName(e.target.value)}
+              sx={{ backgroundColor: "white", borderRadius: 1, mb: 1 }}
+            />
+            <Button 
+              size="small"
+              fullWidth 
+              variant="contained" 
+              onClick={handleCreateClassroom} 
+              sx={{
+                background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)", 
+                color: "white",
+                py: 0.75,
+                "&:hover": { background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)" }
+              }}>
+              Create Classroom
+            </Button>
+            {message && (
+              <Typography variant="caption" sx={{ mt: 1, color: "lightgray" }}>
+                {message}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* See Enrolled Students Section */}
-      <div className="mb-6 bg-white p-4 rounded shadow-md w-80">
-        <h2 className="text-lg font-semibold">See Enrolled Students</h2>
-        <input
-          type="text"
-          placeholder="Classroom Name"
-          value={classroomForStudents}
-          onChange={(e) => setClassroomForStudents(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-        <button
-          onClick={getAllEnrolledStudents}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full"
-        >
-          Get Enrolled Students
-        </button>
-
-        {/* Render Students List */}
-        {students.length > 0 ? (
-          <ul className="mt-2 text-gray-700">
-            {students.map((student, index) => (
-              <li key={index} className="p-2 border-b">{student}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-700 mt-2">No students enrolled.</p>
-        )}
-      </div>
-
-      <div className="mb-6 bg-white p-4 rounded shadow-md w-80">
-        <h2 className="text-lg font-semibold">Create a Assignment</h2>
-
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-        <input
-          type="text"
-          placeholder="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-                    <select 
-                        value={submissionType} 
-                        onChange={(e) => setSubmissionType(e.target.value)} 
-                        className="w-full p-2 border rounded"
-                    >
-                        <option value="text">Text</option>
-                        <option value="file">File Upload</option>
-                        <option value="link">Link Submission</option>
-                        <option value="multiple_choice">Multiple Choice</option>
-                    </select>
-                    {submissionType === "file" && (
-                        <input type="file" className="w-full p-2 border rounded" />
-                    )}
-                    {submissionType === "link" && (
-                        <input type="url" placeholder="Enter link" className="w-full p-2 border rounded" />
-                    )}
-                    {submissionType === "multiple_choice" && (
-                        <textarea placeholder="Enter options separated by commas" className="w-full p-2 border rounded" />
-                    )}
-                    <input 
-                        type="date" 
-                        value={dueDate} 
-                        onChange={(e) => setDueDate(e.target.value)} 
-                        className="w-full p-2 border rounded"
-                    />
-                <input
-          type="text"
-          placeholder="message"
-          value={messaget}
-          onChange={(e) => setMessageT(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-                        <input
-          type="text"
-          placeholder="course id"
-          value={coursef}
-          onChange={(e) => setCourseF(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-        <button
-          onClick={handleSubmit}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full"
-        >
-          Create Assignment
-        </button>
-
-        {message && <p className="text-sm text-gray-700 mt-2">{message}</p>}
-        <input
-          type="text"
-          placeholder="course id"
-          value={course_id}
-          onChange={(e) => setCourseId(e.target.value)}
-          className="p-2 border rounded w-full my-2"
-        />
-        <button
-          onClick={seeAssignments}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full"
-        >See Assignments
-        </button>
-          {assignments.length > 0 ? (
-                    <ul className="mt-2 text-gray-700">
-                        {assignments.map((assignment) => (
-                            <li key={assignment._id} className="p-2 border-b">
-                                <strong>{assignment.title}</strong> - Due: {assignment.due_date}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-sm text-gray-700 mt-2">No assignments found.</p>
-                )}
-        
-      </div>
-      <button
-          onClick={notifyStudents}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full"
-        >
-          Notify all students
-        </button>
-    </div>
+        {/* See Enrolled Students Section */}
+        <Card sx={{ mb: 3, backgroundColor: "rgba(26,0,51,0.8)", backdropFilter: "blur(8px)", borderRadius: 1, border: "1px solid rgba(157, 68, 192, 0.4)" }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="subtitle1" sx={{ mb: 1, fontFamily: "'Playfair Display', serif" }}>
+              See Enrolled Students
+            </Typography>
+            <TextField
+              size="small"
+              fullWidth
+              variant="outlined"
+              placeholder="Classroom Name"
+              value={classroomForStudents}
+              onChange={(e) => setClassroomForStudents(e.target.value)}
+              sx={{ backgroundColor: "white", borderRadius: 1, mb: 1 }}
+            />
+            <Button 
+              size="small"
+              fullWidth 
+              variant="contained" 
+              onClick={getAllEnrolledStudents} 
+              sx={{
+                background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)", 
+                color: "white",
+                py: 0.75,
+                mb: 1,
+                "&:hover": { background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)" }
+              }}>
+              Get Enrolled Students
+            </Button>
+            {students.length > 0 ? (
+              <List dense>
+                {students.map((student, index) => (
+                  <React.Fragment key={index}>
+                    <ListItem disablePadding>
+        </Box>
+        <Box mt={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" component="h2" gutterBottom>
+                <Assignment /> Create an Assignment
+              </Typography>
+              <TextField
+                label="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                select
+                label="Submission Type"
+                value={submissionType}
+                onChange={(e) => setSubmissionType(e.target.value)}
+                fullWidth
+                margin="normal"
+                SelectProps={{
+                  native: true,
+                }}
+              >
+                <option value="text">Text</option>
+                <option value="file">File Upload</option>
+                <option value="link">Link Submission</option>
+                <option value="multiple_choice">Multiple Choice</option>
+              </TextField>
+              {submissionType === "file" && (
+                <TextField
+                  type="file"
+                  fullWidth
+                  margin="normal"
+                />
+              )}
+              {submissionType === "link" && (
+                <TextField
+                  type="url"
+                  label="Enter link"
+                  fullWidth
+                  margin="normal"
+                />
+              )}
+              {submissionType === "multiple_choice" && (
+                <TextField
+                  label="Enter options separated by commas"
+                  fullWidth
+                  margin="normal"
+                />
+              )}
+              <TextField
+                type="date"
+                label="Due Date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                fullWidth
+                margin="normal"
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+              <TextField
+                label="Message"
+                value={messaget}
+                onChange={(e) => setMessageT(e.target.value)}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label="Course ID"
+                value={coursef}
+                onChange={(e) => setCourseF(e.target.value)}
+                fullWidth
+                margin="normal"
+              />
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                color="primary"
+                startIcon={<Add />}
+                fullWidth
+              >
+                Create Assignment
+              </Button>
+              {message && <Typography variant="body2" color="textSecondary">{message}</Typography>}
+              <TextField
+                label="Course ID"
+                value={course_id}
+                onChange={(e) => setCourseId(e.target.value)}
+                fullWidth
+                margin="normal"
+              />
+              <Button
+                onClick={seeAssignments}
+                variant="contained"
+                color="primary"
+                startIcon={<Assignment />}
+                fullWidth
+              >
+                See Assignments
+              </Button>
+              {assignments.length > 0 ? (
+                <Paper elevation={1} style={{ marginTop: 16 }}>
+                  {assignments.map((assignment) => (
+                    <Box key={assignment._id} p={2} borderBottom={1} borderColor="grey.300">
+                      <strong>{assignment.title}</strong> - Due: {assignment.due_date}
+                    </Box>
+                  ))}
+                </Paper>
+              ) : (
+                <Typography variant="body2" color="textSecondary" style={{ marginTop: 16 }}>
+                  No assignments found.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+        <Box mt={4}>
+          <Button
+            onClick={notifyStudents}
+            variant="contained"
+            color="primary"
+            startIcon={<NotificationsActive />}
+            fullWidth
+          >
+            Notify all students
+          </Button>
+        </Box>
+      </Container>
+    </>
   );
 }
