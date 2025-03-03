@@ -232,7 +232,7 @@ const JoinClassroom = () => {
               <IconButton 
                 className="nav-button"
                 color="inherit" 
-                onClick={() => navigateTo("/resources")}
+                onClick={() => navigateTo("/resourses")}
                 sx={{ 
                   color: "#E0E0E0",
                   mx: { xs: 0.5, md: 1 } 
