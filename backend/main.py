@@ -160,6 +160,7 @@ async def upload_resource(
     print(f"Received description: {description}")  # Debugging
     
     file_id = await db.fs.files.insert_one({"filename": file.filename})
+    
 
     response = generate_tags(description)
     tags = response
