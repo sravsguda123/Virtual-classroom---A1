@@ -12,6 +12,7 @@ from bson import ObjectId
 from typing import List, Optional
 from pydantic import BaseModel, HttpUrl
 import shutil
+from keybert import KeyBERT
 
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
@@ -24,7 +25,7 @@ users = db["users"]
 courses = db["courses"]
 assignments=db["assignments"]
 submissions=db["submissions"]
-
+resources=db["resources"]
 # Constants
 SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
 REDIS_HOST = "localhost"
@@ -54,19 +55,15 @@ async def show_routes():
     from fastapi.routing import APIRoute
     routes = [route.path for route in app.router.routes if isinstance(route, APIRoute)]
     print("Registered routes:", routes)
-
-users_db = {
-    "teacher1": {"username": "teacher1", "password": "pass123", "role": "teacher"},
-    "student1": {"username": "student1", "password": "pass123", "role": "student"},
-    "student2": {"username": "student2", "password": "pass123", "role": "student"}
-    
-}
-classrooms_db = {
-    "1": {"name": "csea", "teacher": "teacher_1", "students": []},
-}
+async def create_indexes():
+    await resources.create_index([("tags", 1)])
 
 
-
+        
+def calculate_score(resource):
+    return (resource.get("likes", 0) * 5 + 
+            resource.get("downloads", 0) * 3 + 
+            resource.get("views", 0) * 1)
 def convert_mongo_document(doc):
     """ Recursively converts MongoDB documents to JSON serializable format """
     if isinstance(doc, list):
@@ -79,6 +76,7 @@ def convert_mongo_document(doc):
         return doc
 
 from fastapi import Header
+kw_model = KeyBERT()
 
 def verify_token(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
@@ -105,7 +103,9 @@ async def verify_token_for_socket(websocket: WebSocket):
     except HTTPException as e:
         print(f"Token verification error: {e.detail}")
         await websocket.close(code=1008)
-
+def generate_tags(text):
+    keywords = kw_model.extract_keywords(text, keyphrase_ngram_range=(1, 2), stop_words='english')
+    return [kw[0] for kw in keywords]
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -119,40 +119,73 @@ class AssignmentCreate(BaseModel):
     submission_type: str  # "file", "text", "link", "multiple_choice"
     due_date: str
     course_id:str
-
 class AssignmentResponse(AssignmentCreate):
     id: str
     teacher_id: str
-
 class SubmissionCreate(BaseModel):
     text_content: Optional[str] = None
     file: Optional[UploadFile] = None
     link: Optional[HttpUrl] = None
     mcq_answers: Optional[dict] = None
 
-users.insert_one({
-   "user_id": "teacher1",
-   "password": "password",
-   "role": "teacher"
-})
+class Resource(BaseModel):
+    title:str
+    description:str
+    tags:list[str]=[]
+    score:int=0
 
-
-users.insert_one({
+def insert_first():
+    users.insert_one({
    "user_id": "student1",
    "password": "password",
    "role": "student"
 })
-
-users.insert_one({
+    users.insert_one({
    "user_id": "student2",
    "password": "password",
    "role": "student"
 })
+    users.insert_one({
+   "user_id": "teacher1",
+   "password": "password",
+   "role": "teacher"
+})
+    print("Users inserted successfully!")
+from fastapi import Query,Form
+@app.post("/upload")
+async def upload_resource(
+    file: UploadFile = File(...), title: str = Form(""), description: str = Form("")
+):
+    print(f"Received title: {title}")  # Debugging
+    print(f"Received description: {description}")  # Debugging
+    
+    file_id = await db.fs.files.insert_one({"filename": file.filename})
 
-print("Users inserted successfully!")
+    response = generate_tags(description)
+    tags = response
+
+    resource_doc = {
+        "title": title,
+        "description": description,
+        "tags": [tag.strip() for tag in tags],
+        "file_id": file_id.inserted_id,
+        "score": 0,
+        "likes": 0,
+        "downloads": 0,
+        "views": 0,
+    }
+
+    result = await resources.insert_one(resource_doc)
+    return {"id": str(result.inserted_id), "tags": tags}
 
 
-
+@app.get("/search")
+async def search_resources(tags: List[str] = Query(...)):
+    search_results = await resources.find(
+        {"tags": {"$in": tags}}
+    ).sort("score", -1).to_list(10)
+    
+    return convert_mongo_document(search_results)
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
     assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
@@ -219,25 +252,7 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
 
     # return {"class_id": str(id)}
 
-# @app.post("/join_classroom")
-# async def join_classroom(
-#     request: JoinClassroomRequest, user: dict = Depends(verify_token)
-# ):
-#     class_id = request.class_id
-    
-#     # Validate classroom existence
-#     classroom = classrooms_db.get(class_id)
-#     if not classroom:
-#         raise HTTPException(status_code=404, detail="Classroom not found")
 
-#     # Check if the user is already a member
-#     if user["id"] in classroom["students"]:
-#         return {"message": "Already joined classroom"}
-
-#     # Add the user to the students list
-#     classroom["students"].append(user["id"])
-
-#     return {"message": "Joined classroom successfully","class_id":class_id}
 @app.get("/students_in_courses/{course_id}")
 async def students_in_courses(course_id: str):
     # Fetch the classroom from MongoDB
@@ -412,7 +427,7 @@ async def send_notification_to_all(websocket: WebSocket, course_id: str):
             for user_id in classroom["students"]:
                 
                 await redis_client.publish(user_id, json.dumps(data))
-                await websocket.send_json({"status": "Notification sent", "user_id": user_id})
+                await websocket.send_json({"status": "Notification sent"})
     
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
