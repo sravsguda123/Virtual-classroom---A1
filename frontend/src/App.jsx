@@ -6,6 +6,8 @@ import JoinClassroom from "./components/join-classroom.jsx";
 import Chatroom from "./components/chatrooms.jsx";
 import Notifications from "./components/notifications.jsx";
 import TeacherDashboard from "./components/create-classroom.jsx";
+import ResourceSharing from "./components/resourses.jsx";
+
 
 function App() {
   return (
@@ -17,6 +19,7 @@ function App() {
         <Route path="/join-classroom" element={<JoinClassroom />} />
         <Route path="/chatroom/:id" element={<Chatroom />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/resourses" element={<ResourceSharing />} />
       </Routes>
     </Router>
     
