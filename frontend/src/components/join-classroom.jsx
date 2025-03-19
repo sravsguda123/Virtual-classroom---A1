@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+
+import { useNavigate,useLocation } from "react-router-dom";
 import {
   Container,
   Box,
@@ -30,6 +31,8 @@ import {
 
 const JoinClassroom = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
   const [classroomId, setClassroomId] = useState("");
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
@@ -45,7 +48,7 @@ const JoinClassroom = () => {
   useEffect(() => {
     // This would be replaced with an actual API call in production
     const fetchStudentData = async () => {
-      const token = localStorage.getItem("token");
+      // const token = localStorage.getItem("token");
       if (token) {
         // Mock data for now
         // In production: const response = await axios.get("http://127.0.0.1:8000/student_profile", {...})
@@ -218,7 +221,7 @@ const JoinClassroom = () => {
               <IconButton 
                 className="nav-button"
                 color="inherit" 
-                onClick={() => navigateTo("/assignments")}
+                onClick={() => navigateTo("/submit")}
                 sx={{ 
                   color: "#E0E0E0",
                   mx: { xs: 0.5, md: 1 } 

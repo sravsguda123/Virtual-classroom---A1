@@ -60,7 +60,7 @@ const Login = () => {
         if (role === "teacher") {
           navigate(`/create-classroom?token=${response.data.token}`);
         } else if (role === "student") {
-          navigate("/join-classroom");
+          navigate("/join-classroom?token=${response.data.token}");
         } else {
           setError("Invalid role assigned to your account");
           setShowError(true);

@@ -7,6 +7,8 @@ import Chatroom from "./components/chatrooms.jsx";
 import Notifications from "./components/notifications.jsx";
 import TeacherDashboard from "./components/create-classroom.jsx";
 import ResourceSharing from "./components/resourses.jsx";
+import AssignmentSubmission from "./components/submissions.jsx";
+import SubmissionsTable from "./components/seesubmissions.jsx";
 
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
         <Route path="/chatroom/:id" element={<Chatroom />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/resourses" element={<ResourceSharing />} />
+        <Route path="/submit" element={<AssignmentSubmission />} />
+        <Route path="/seesubmissions" element={<SubmissionsTable />} />
       </Routes>
     </Router>
     

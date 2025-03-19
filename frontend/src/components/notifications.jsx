@@ -46,8 +46,8 @@ const Notifications = () => {
       // Transform the notifications to match expected structure
       const formattedData = data.map((notif) => ({
         id: notif._id,
-        title: notif.message.title,
-        body: notif.message.body,
+        
+        message: notif.message,
         timestamp: new Date(notif.timestamp).toLocaleString(),
         read: notif.status === "read",
       }));
@@ -445,7 +445,7 @@ const Notifications = () => {
                             }}
                           />
                         )}
-                        <Typography
+                        {/* <Typography
                           variant="h6"
                           sx={{
                             color: "#FFFFFF",
@@ -455,7 +455,7 @@ const Notifications = () => {
                           }}
                         >
                           {notif.title}
-                        </Typography>
+                        </Typography> */}
                         <Typography
                           variant="body1"
                           sx={{
@@ -465,7 +465,7 @@ const Notifications = () => {
                             mb: 2,
                           }}
                         >
-                          {notif.body}
+                          {notif.message}
                         </Typography>
                         <Typography
                           variant="caption"

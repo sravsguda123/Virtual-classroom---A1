@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile
+from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response
 from redis import Redis
 import jwt
 from pydantic import BaseModel
@@ -13,6 +13,8 @@ from typing import List, Optional
 from pydantic import BaseModel, HttpUrl
 import shutil
 from keybert import KeyBERT
+import gridfs
+import os
 
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
@@ -26,6 +28,10 @@ courses = db["courses"]
 assignments=db["assignments"]
 submissions=db["submissions"]
 resources=db["resources"]
+
+
+fs = motor.motor_asyncio.AsyncIOMotorGridFSBucket(db)
+import io
 # Constants
 SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
 REDIS_HOST = "localhost"
@@ -152,15 +158,34 @@ def insert_first():
 })
     print("Users inserted successfully!")
 from fastapi import Query,Form
+
+
+
+@app.post("/login")
+async def login(request: LoginRequest):
+    user_list = await users.find({"user_id": request.username}).to_list(1)
+    print(user_list)
+    if not user_list:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user = user_list[0]
+    if user["password"] != request.password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = jwt.encode({"id": request.username, "role": user["role"]}, SECRET_KEY, algorithm="HS256")
+    return {"token": token}
+
+
 @app.post("/upload")
 async def upload_resource(
-    file: UploadFile = File(...), title: str = Form(""), description: str = Form("")
+    file: Optional[UploadFile] = File(None), 
+    title: str = Form(""), 
+    description: str = Form("")
 ):
     print(f"Received title: {title}")  # Debugging
     print(f"Received description: {description}")  # Debugging
     
-    file_id = await db.fs.files.insert_one({"filename": file.filename})
-    
+    file_id = None
+    if file:
+        file_id = await fs.upload_from_stream(file.filename, file.file)
 
     response = generate_tags(description)
     tags = response
@@ -169,7 +194,7 @@ async def upload_resource(
         "title": title,
         "description": description,
         "tags": [tag.strip() for tag in tags],
-        "file_id": file_id.inserted_id,
+        "file_id": file_id,
         "score": 0,
         "likes": 0,
         "downloads": 0,
@@ -185,50 +210,129 @@ async def search_resources(tags: List[str] = Query(...)):
     search_results = await resources.find(
         {"tags": {"$in": tags}}
     ).sort("score", -1).to_list(10)
+
+    # Convert MongoDB documents to JSON
+    for doc in search_results:
+        doc["_id"] = str(doc["_id"])
+        if "file_id" in doc and doc["file_id"]:
+            doc["file_id"] = str(doc["file_id"])
     
-    return convert_mongo_document(search_results)
+    return search_results
+
+
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
     assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
 
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
-    return convert_mongo_document(assignment)
+    
+    for doc in assignment:
+        doc["_id"] = str(doc["_id"])
+    
+    return assignment
 
-@app.get("/teacher_see_submissions/{assignment_id}")
-async def view_submissions(assignment_id: str, current_user: dict = Depends(verify_token)):
-   if db is None:
-      raise HTTPException(status_code=500, detail="Database connection failed")
-   if current_user["role"] != "teacher":
-      raise HTTPException(status_code=403, detail="Access denied")
-   submissions = list(db.submissions.find({"assignment_id": ObjectId(assignment_id)}))
-   for submission in submissions:
-      submission["_id"] = str(submission["_id"])
-      submission["assignment_id"] = str(submission["assignment_id"])
-   return submissions
-
-@app.post("/login")
-async def login(request: LoginRequest):
-    user_list = await users.find({"user_id": request.username}).to_list(1)
-    print(user_list)
-    if not user_list:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    user = user_list[0]
-    if user["password"] != request.password:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = jwt.encode({"id": request.username, "role": user["role"]}, SECRET_KEY, algorithm="HS256")
-    return {"token": token}
 
 @app.post("/create_assignments")
-async def create_assignments(assignment: AssignmentCreate, user: dict = Depends(verify_token)):
+async def create_assignments(assignment: dict, user: dict = Depends(verify_token)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can create assignments")
 
     teacher_id = user["id"]
-    new_assignment = assignment.model_dump()
-    new_assignment["teacher_id"] = teacher_id
-    result = await assignments.insert_one(new_assignment)
+    assignment["teacher_id"] = teacher_id
+    result = await assignments.insert_one(assignment)
     return {"message": "Created assignment successfully", "assignment_id": str(result.inserted_id)}
+
+### 📩 **Submitting an Assignment (Fixing Optional File)**
+@app.post("/submit")
+async def submit_assignment(
+    
+    text_content: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),  # ✅ Fix: Make file optional
+    link: Optional[HttpUrl] = Form(None),
+    
+    assignment_id: str = Form(...),
+    user: dict = Depends(verify_token)
+):
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can submit assignments")
+
+    file_id = None
+    if file:
+        file_id = await fs.upload_from_stream(file.filename, file.file)
+
+    submission_data = {
+        "assignment_id": assignment_id,
+        "student_id": user["id"],
+        "text_content": text_content,
+        "link": link,
+        "file_id": file_id,
+    }
+    print("the inserted data is",submission_data)
+    
+    assignment = await assignments.find_one({"_id": ObjectId(assignment_id)})
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+
+    result = await submissions.insert_one(submission_data)
+    return {"message": "Assignment submitted successfully", "file_id": str(file_id) if file_id else None}
+
+### 📥 **Fetching Submissions for an Assignment**
+@app.get("/submissions/{assignment_id}", response_model=List[dict])
+async def get_submissions(assignment_id: str, user: dict = Depends(verify_token)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view submissions")
+
+    submission_list = await submissions.find({"assignment_id": assignment_id}).to_list(length=None)
+    
+    if not submission_list:
+        raise HTTPException(status_code=404, detail="No submissions found")
+
+    for sub in submission_list:
+        sub["_id"] = str(sub["_id"])
+        if "file_id" in sub and sub["file_id"]:
+            sub["file_id"] = str(sub["file_id"])
+    
+    return submission_list
+
+### 📑 **Fetching a Specific Submission**
+@app.get("/submission/{submission_id}")
+async def get_submission(submission_id: str, user: dict = Depends(verify_token)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can access submissions")
+
+    submission = await submissions.find_one({"_id": ObjectId(submission_id)})
+    
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    submission["_id"] = str(submission["_id"])
+    if "file_id" in submission and submission["file_id"]:
+        submission["file_id"] = str(submission["file_id"])
+    
+    return submission
+
+### 📂 **Downloading a Submission File**
+@app.get("/download/{file_id}")
+async def download_file(file_id: str, user: dict = Depends(verify_token)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can download files")
+
+    try:
+        file_id_obj = ObjectId(file_id)
+        grid_out = await fs.open_download_stream(file_id_obj)
+        file_data = await grid_out.read()
+
+        return Response(
+            content=file_data,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={grid_out.filename}"}
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+
+
 
 
 @app.post("/create_classroom")
@@ -394,47 +498,21 @@ async def send_notification(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         print(f"Client {user_id} disconnected")
     
-@app.websocket("/notify_all/{course_id}")
-async def send_notification_to_all(websocket: WebSocket, course_id: str):
-    await websocket.accept()
-    
-    token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=1008)  # Close connection due to missing token
-        raise HTTPException(status_code=401, detail="Token is required")
+@app.get("/notify_all/{course_id}/{assignment_id}")
+async def send_notification_to_all( course_id: str,assignment_id:str):
+    classroom = await courses.find_one({"class_id": course_id})
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+    else:
+        for student in classroom["students"]:
+             user_id=student
+             data=f"New assignment {assignment_id} has been posted in {course_id}"
+             print(user_id)
+             data_to_store = {"user_id": user_id,"message": data,"timestamp": datetime.utcnow().isoformat(),"status": "unread"}
+             await collection.insert_one(data_to_store)
 
-    # Verify the token
-    try:
-        classroom = await courses.find_one({"class_id": course_id})
-        user = verify_token(f"Bearer {token}") 
-        print(user["id"])# Add "Bearer " prefix
-    except HTTPException as e:
-        await websocket.close(code=1008)  # Close connection due to invalid token
-        raise e  # Raise the HTTPException
-    
-    # Verify if the user is an admin (you might need to pass token via headers or query parameters)
-    # You might need an async version if it's an async function
-    
-    if user["role"] != "teacher":
-        await websocket.send_json({"error": "Not authorized. Only teachers can send gmeet notification."})
-        await websocket.close()
-        return
-    
-    
-    try:
-        while True:
-            data = await websocket.receive_json()
-
-            for user_id in classroom["students"]:
-                
-                await redis_client.publish(user_id, json.dumps(data))
-                await websocket.send_json({"status": "Notification sent"})
-    
-    except WebSocketDisconnect:
-        print(f"Client {user_id} disconnected")
-    
-
-
+            
+    return {"message": "Notification sent to all students"}
 
 
 @app.websocket("/ws/{class_id}")
