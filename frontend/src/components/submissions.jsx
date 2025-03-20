@@ -1,67 +1,60 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
-import { useParams } from "react-router-dom";
 import {
   Container,
   Paper,
-  Typography,
-  Button,
-  Box,
-  Fade,
   TextField,
+  Button,
+  Typography,
+  Box,
+  Slide,
+  Fade,
   CircularProgress,
-  IconButton,
-  Divider,
+  Snackbar,
+  Alert,
+  InputAdornment,
 } from "@mui/material";
 import {
   Assignment,
-  CloudUpload,
   Link as LinkIcon,
+  Upload,
   TextFields,
-  QuestionAnswer,
-  ArrowBack,
-  CalendarToday,
+  Numbers,
+  CheckCircleOutline,
 } from "@mui/icons-material";
 
 const AssignmentSubmission = () => {
-  const { assignmentId } = useParams();
+  const [assignmentId, setAssignmentId] = useState("");
   const [textContent, setTextContent] = useState("");
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const token = params.get("token");
   const [link, setLink] = useState("");
   const [file, setFile] = useState(null);
-  const [mcqAnswers, setMcqAnswers] = useState("");
-  const [duedate, setDuedate] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showContent, setShowContent] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [mcqAnswers, setMcqAnswers] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [message, setMessage] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    const fetchDueDate = async () => {
-      try {
-        const response = await axios.get(`http://127.0.0.1:8000/assignment_due_date/${assignmentId}`);
-        setDuedate(response.data.due_date);
-        console.log(response.data.due_date);
-      } catch (error) {
-        console.error("Error fetching due date:", error);
-      } finally {
-        setTimeout(() => setShowContent(true), 300);
-      }
-    };
-    if (assignmentId) fetchDueDate();
-  }, [assignmentId]);
+  useState(() => {
+    setTimeout(() => setShowForm(true), 500);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    
     const formData = new FormData();
-
+    
     if (textContent) formData.append("text_content", textContent);
     if (file) formData.append("file", file);
     if (link) formData.append("link", link);
-
+    if (mcqAnswers) formData.append("mcq_answers", mcqAnswers);
+    
     formData.append("assignment_id", assignmentId);
 
     try {
@@ -75,10 +68,12 @@ const AssignmentSubmission = () => {
           },
         }
       );
-      alert(response.data.message);
+      setMessage(response.data.message);
+      setShowSuccess(true);
+      setLoading(false);
     } catch (error) {
-      alert("Submission failed");
-    } finally {
+      setMessage("Submission failed");
+      setShowError(true);
       setLoading(false);
     }
   };
@@ -86,7 +81,7 @@ const AssignmentSubmission = () => {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
-    setFileName(selectedFile?.name || "");
+    setFileName(selectedFile ? selectedFile.name : "");
   };
 
   return (
@@ -101,6 +96,12 @@ const AssignmentSubmission = () => {
             100% { background-position: 0% 50%; }
           }
 
+          @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+          }
+          
           @keyframes pulse {
             0% { opacity: 0.7; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.05); }
@@ -145,48 +146,46 @@ const AssignmentSubmission = () => {
             animation: pulse 4s infinite;
           }
           
-          .input-container {
-            position: relative;
-            margin-bottom: 24px;
-            transition: all 0.3s ease;
-          }
-          
-          .input-container:hover {
-            transform: translateY(-2px);
-          }
-          
-          .input-icon {
-            position: absolute;
-            top: 16px;
-            left: 16px;
-            color: rgba(157, 68, 192, 0.7);
+          input:-webkit-autofill,
+          input:-webkit-autofill:hover,
+          input:-webkit-autofill:focus,
+          input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px rgba(43, 9, 68, 0.9) inset !important;
+            -webkit-text-fill-color: #E0E0E0 !important;
           }
           
           .custom-file-input {
-            display: none;
-          }
-          
-          .file-upload-btn {
-            background-color: rgba(157, 68, 192, 0.15);
-            color: #9D44C0;
-            border: 1px dashed rgba(157, 68, 192, 0.5);
-            border-radius: 16px;
-            padding: 16px;
+            color: transparent;
             width: 100%;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Poppins', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            height: 56px;
+            position: relative;
           }
           
-          .file-upload-btn:hover {
-            background-color: rgba(157, 68, 192, 0.25);
-            border-color: rgba(157, 68, 192, 0.7);
+          .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+          }
+          
+          .custom-file-input::before {
+            content: 'Select File';
+            color: #E0E0E0;
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px 20px;
+            outline: none;
+            white-space: nowrap;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            width: 100%;
+            text-align: left;
+            font-size: 1rem;
+          }
+          
+          .custom-file-input:hover::before {
+            background: rgba(255,255,255,0.15);
+          }
+          
+          .custom-file-input:active::before {
+            background: rgba(255,255,255,0.2);
           }
         `}
       </style>
@@ -235,7 +234,7 @@ const AssignmentSubmission = () => {
             padding: { xs: 2, md: 4 },
           }}
         >
-          <Fade in={true} timeout={1000}>
+          <Fade in={showForm} timeout={1000}>
             <Paper
               elevation={24}
               sx={{
@@ -250,268 +249,348 @@ const AssignmentSubmission = () => {
                 display: "flex",
                 flexDirection: "column",
               }}
-              className="neon-glow"
+              className="neon-glow hover-scale"
             >
               {/* Decorative accent line */}
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "4px",
-                  background: "linear-gradient(90deg, #8E24AA 0%, #9D44C0 50%, #6C3483 100%)",
+              <Box 
+                sx={{ 
+                  position: "absolute", 
+                  top: 0, 
+                  left: 0, 
+                  width: "100%", 
+                  height: "4px", 
+                  background: "linear-gradient(90deg, #8E24AA 0%, #9D44C0 50%, #6C3483 100%)" 
                 }}
               />
-
-              {/* Header */}
-              <Box
-                sx={{
-                  padding: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  borderBottom: "1px solid rgba(157, 68, 192, 0.2)",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <IconButton
-                    sx={{ 
-                      color: "#9D44C0", 
-                      mr: 2,
-                      "&:hover": {
-                        backgroundColor: "rgba(157, 68, 192, 0.1)",
-                      }
-                    }}
-                  >
-                    <ArrowBack />
-                  </IconButton>
-                  <Assignment
-                    sx={{
-                      fontSize: 36,
-                      color: "#9D44C0",
-                      marginRight: 2,
-                      filter: "drop-shadow(0 0 10px rgba(157, 68, 192, 0.5))",
-                    }}
-                  />
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      color: "#FFFFFF",
-                      fontFamily: "'Playfair Display', serif",
-                      fontWeight: 600,
-                      letterSpacing: "1px",
-                    }}
-                  >
-                    Submit Assignment
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <CalendarToday sx={{ color: "#9D44C0", mr: 1 }} />
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      color: "#E0E0E0",
-                      fontFamily: "'Poppins', sans-serif",
-                      fontWeight: 300,
-                      backgroundColor: "rgba(157, 68, 192, 0.2)",
-                      borderRadius: "12px",
-                      padding: "4px 12px",
-                    }}
-                  >
-                    Due: {duedate}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* Form Content */}
-              <Box
-                component="form"
-                onSubmit={handleSubmit}
-                sx={{
-                  flex: 1,
-                  overflow: "auto",
-                  padding: 3,
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Fade in={showContent} timeout={800}>
-                  <Box>
-                    {/* Text Content */}
-                    <Box className="input-container" sx={{ position: "relative" }}>
-                      <TextFields className="input-icon" />
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={6}
-                        placeholder="Write your answer..."
-                        value={textContent}
-                        onChange={(e) => setTextContent(e.target.value)}
-                        variant="outlined"
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            color: "#E0E0E0",
-                            fontFamily: "'Poppins', sans-serif",
-                            backgroundColor: "rgba(26, 0, 51, 0.4)",
-                            borderRadius: "16px",
-                            pl: 5,
-                            "& fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.3)",
-                            },
-                            "&:hover fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.5)",
-                            },
-                            "&.Mui-focused fieldset": {
-                              borderColor: "#9D44C0",
-                            },
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    {/* Link */}
-                    <Box className="input-container" sx={{ position: "relative" }}>
-                      <LinkIcon className="input-icon" />
-                      <TextField
-                        fullWidth
-                        placeholder="Submit a link (optional)"
-                        value={link}
-                        onChange={(e) => setLink(e.target.value)}
-                        variant="outlined"
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            color: "#E0E0E0",
-                            fontFamily: "'Poppins', sans-serif",
-                            backgroundColor: "rgba(26, 0, 51, 0.4)",
-                            borderRadius: "16px",
-                            pl: 5,
-                            "& fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.3)",
-                            },
-                            "&:hover fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.5)",
-                            },
-                            "&.Mui-focused fieldset": {
-                              borderColor: "#9D44C0",
-                            },
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    {/* File Upload */}
-                    <Box className="input-container">
-                      <input
-                        type="file"
-                        id="file-upload"
-                        className="custom-file-input"
-                        onChange={handleFileChange}
-                      />
-                      <label htmlFor="file-upload" className="file-upload-btn"
-                        style={{
-                          width: "725px",  // Adjust width as needed
-                          height: "20px",   // Adjust height as needed
-                          padding: "12px",  // Adjust padding to control internal spacing
-                        }}>
-                        <CloudUpload sx={{ fontSize: 24, color: "#9D44C0" }} />
-                        <Typography variant="body1" sx={{ color: "#E0E0E0" }}>
-                          {fileName ? `Selected: ${fileName}` : "Upload File (optional)"}
-                        </Typography>
-                      </label>
-                    </Box>
-
-                    {/* MCQ Answers */}
-                    <Box className="input-container" sx={{ position: "relative" }}>
-                      <QuestionAnswer className="input-icon" />
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={4}
-                        placeholder="Enter MCQ answers (comma separated)"
-                        value={mcqAnswers}
-                        onChange={(e) => setMcqAnswers(e.target.value)}
-                        variant="outlined"
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            color: "#E0E0E0",
-                            fontFamily: "'Poppins', sans-serif",
-                            backgroundColor: "rgba(26, 0, 51, 0.4)",
-                            borderRadius: "16px",
-                            pl: 5,
-                            "& fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.3)",
-                            },
-                            "&:hover fieldset": {
-                              borderColor: "rgba(157, 68, 192, 0.5)",
-                            },
-                            "&.Mui-focused fieldset": {
-                              borderColor: "#9D44C0",
-                            },
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    {/* Submit Button */}
-                    <Box sx={{ mt: 3, textAlign: "center" }}>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading}
-                        sx={{
-                          backgroundColor: "#9D44C0",
-                          color: "#FFFFFF",
-                          fontFamily: "'Poppins', sans-serif",
-                          fontWeight: 500,
-                          borderRadius: "16px",
-                          padding: "12px 36px",
-                          fontSize: "1.1rem",
-                          textTransform: "none",
-                          "&:hover": {
-                            backgroundColor: "#8E24AA",
-                            boxShadow: "0 0 15px rgba(157, 68, 192, 0.5)",
-                          },
-                        }}
-                      >
-                        {loading ? (
-                          <CircularProgress size={24} sx={{ color: "#FFFFFF" }} />
-                        ) : (
-                          "Submit Assignment"
-                        )}
-                      </Button>
-                    </Box>
-                  </Box>
-                </Fade>
-              </Box>
-
-              {/* Footer */}
-              <Box
-                sx={{
-                  padding: 2,
-                  display: "flex",
-                  justifyContent: "center",
-                  borderTop: "1px solid rgba(157, 68, 192, 0.2)",
-                }}
-              >
+              
+              <Box sx={{ textAlign: "center", mb: 5, mt: 4 }}>
+                <Assignment 
+                  sx={{ 
+                    fontSize: 40, 
+                    color: "#9D44C0", 
+                    mb: 2,
+                    filter: "drop-shadow(0 0 10px rgba(157, 68, 192, 0.5))" 
+                  }} 
+                />
                 <Typography
-                  variant="caption"
+                  variant="h3"
+                  sx={{
+                    color: "#FFFFFF",
+                    textAlign: "center",
+                    fontFamily: "'Playfair Display', serif",
+                    fontWeight: 600,
+                    letterSpacing: "2px",
+                    mb: 1
+                  }}
+                >
+                  Assignment Submission
+                </Typography>
+                <Typography
+                  variant="body2"
                   sx={{
                     color: "#BBBBBB",
                     fontFamily: "'Poppins', sans-serif",
-                    opacity: 0.7,
+                    fontWeight: 300,
                   }}
                 >
-                  Virtual Classroom Assignment Submission • {new Date().getFullYear()}
+                  Share your work and demonstrate your understanding
                 </Typography>
               </Box>
+
+              <form onSubmit={handleSubmit}>
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '200ms' }}>
+                  <TextField
+                    fullWidth
+                    label="Assignment ID"
+                    variant="filled"
+                    value={assignmentId}
+                    onChange={(e) => setAssignmentId(e.target.value)}
+                    required
+                    sx={{
+                      mb: 3,
+                      "& .MuiFilledInput-root": {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        borderRadius: "12px",
+                        color: "#E0E0E0",
+                        fontFamily: "'Poppins', sans-serif",
+                        transition: "all 0.3s ease",
+                        "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                        "&.Mui-focused": { 
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          boxShadow: "0 0 15px rgba(157, 68, 192, 0.3)",
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Numbers sx={{ color: "#9D44C0" }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    InputLabelProps={{
+                      sx: { 
+                        color: "#C0C0C0",
+                        fontFamily: "'Poppins', sans-serif",
+                      },
+                    }}
+                  />
+                </Slide>
+
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '300ms' }}>
+                  <TextField
+                    fullWidth
+                    label="Your Answer"
+                    variant="filled"
+                    multiline
+                    rows={4}
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
+                    sx={{
+                      mb: 3,
+                      "& .MuiFilledInput-root": {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        borderRadius: "12px",
+                        color: "#E0E0E0",
+                        fontFamily: "'Poppins', sans-serif",
+                        transition: "all 0.3s ease",
+                        "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                        "&.Mui-focused": { 
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          boxShadow: "0 0 15px rgba(157, 68, 192, 0.3)",
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: 1.5 }}>
+                          <TextFields sx={{ color: "#9D44C0" }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    InputLabelProps={{
+                      sx: { 
+                        color: "#C0C0C0",
+                        fontFamily: "'Poppins', sans-serif",
+                      },
+                    }}
+                  />
+                </Slide>
+
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '400ms' }}>
+                  <TextField
+                    fullWidth
+                    label="Resource Link"
+                    variant="filled"
+                    type="url"
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    sx={{
+                      mb: 3,
+                      "& .MuiFilledInput-root": {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        borderRadius: "12px",
+                        color: "#E0E0E0",
+                        fontFamily: "'Poppins', sans-serif",
+                        transition: "all 0.3s ease",
+                        "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                        "&.Mui-focused": { 
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          boxShadow: "0 0 15px rgba(157, 68, 192, 0.3)",
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LinkIcon sx={{ color: "#9D44C0" }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    InputLabelProps={{
+                      sx: { 
+                        color: "#C0C0C0",
+                        fontFamily: "'Poppins', sans-serif",
+                      },
+                    }}
+                  />
+                </Slide>
+
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '500ms' }}>
+                  <Box
+                    sx={{
+                      mb: 3,
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                      borderRadius: "12px",
+                      color: "#E0E0E0",
+                      fontFamily: "'Poppins', sans-serif",
+                      transition: "all 0.3s ease",
+                      p: 2,
+                      "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                      "&.Mui-focused": { 
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        boxShadow: "0 0 15px rgba(157, 68, 192, 0.3)",
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                      <Upload sx={{ color: "#9D44C0", mr: 1 }} />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#C0C0C0",
+                          fontFamily: "'Poppins', sans-serif",
+                        }}
+                      >
+                        Upload File
+                      </Typography>
+                    </Box>
+                    <input
+                      type="file"
+                      className="custom-file-input"
+                      onChange={handleFileChange}
+                    />
+                    {fileName && (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 1,
+                          color: "#9D44C0",
+                          fontFamily: "'Poppins', sans-serif",
+                          fontSize: "0.8rem"
+                        }}
+                      >
+                        {fileName}
+                      </Typography>
+                    )}
+                  </Box>
+                </Slide>
+
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '600ms' }}>
+                  <TextField
+                    fullWidth
+                    label="MCQ Answers (comma separated)"
+                    variant="filled"
+                    value={mcqAnswers}
+                    onChange={(e) => setMcqAnswers(e.target.value)}
+                    sx={{
+                      mb: 4,
+                      "& .MuiFilledInput-root": {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        borderRadius: "12px",
+                        color: "#E0E0E0",
+                        fontFamily: "'Poppins', sans-serif",
+                        transition: "all 0.3s ease",
+                        "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                        "&.Mui-focused": { 
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          boxShadow: "0 0 15px rgba(157, 68, 192, 0.3)",
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CheckCircleOutline sx={{ color: "#9D44C0" }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    InputLabelProps={{
+                      sx: { 
+                        color: "#C0C0C0",
+                        fontFamily: "'Poppins', sans-serif",
+                      },
+                    }}
+                  />
+                </Slide>
+
+                <Slide direction="up" in={showForm} timeout={1000} style={{ transitionDelay: '700ms' }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    type="submit"
+                    disabled={loading}
+                    sx={{
+                      py: 2,
+                      mt: 2,
+                      background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)",
+                      fontWeight: "500",
+                      letterSpacing: "2px",
+                      fontSize: "1.1rem",
+                      borderRadius: "12px",
+                      fontFamily: "'Poppins', sans-serif",
+                      color: "#FFFFFF",
+                      boxShadow: "0 4px 20px rgba(157, 68, 192, 0.3)",
+                      border: "none",
+                      "&:hover": {
+                        background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)",
+                        transform: "translateY(-2px)",
+                        boxShadow: "0 6px 25px rgba(157, 68, 192, 0.5)",
+                      },
+                      "&:active": {
+                        transform: "translateY(1px)",
+                        boxShadow: "0 2px 10px rgba(157, 68, 192, 0.4)",
+                      },
+                      transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                    }}
+                  >
+                    {loading ? (
+                      <CircularProgress size={24} sx={{ color: "#FFFFFF" }} />
+                    ) : (
+                      "SUBMIT ASSIGNMENT"
+                    )}
+                  </Button>
+                </Slide>
+              </form>
             </Paper>
           </Fade>
         </Box>
       </Container>
+      
+      {/* Error Notification */}
+      <Snackbar 
+        open={showError} 
+        autoHideDuration={6000} 
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowError(false)} 
+          severity="error" 
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            fontFamily: "'Poppins', sans-serif",
+            bgcolor: '#9D44C0', 
+            color: 'white'
+          }}
+        >
+          {message}
+        </Alert>
+      </Snackbar>
+      
+      {/* Success Notification */}
+      <Snackbar 
+        open={showSuccess} 
+        autoHideDuration={6000} 
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowSuccess(false)} 
+          severity="success" 
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            fontFamily: "'Poppins', sans-serif",
+            bgcolor: '#9D44C0',
+            color: 'white'
+          }}
+        >
+          {message}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
-
 export default AssignmentSubmission;
