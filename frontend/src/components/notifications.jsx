@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"; // Import useNavigate
 import { Link } from "react-router-dom";
 import axios from "axios";
 import {
@@ -24,13 +24,14 @@ import {
 
 const Notifications = () => {
   const location = useLocation();
+  const navigate = useNavigate(); // Initialize useNavigate
   const params = new URLSearchParams(location.search);
   const token = params.get("token");
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
-  const [assignmentId,setAssignmentID] = useState("");
+  const [assignmentId, setAssignmentID] = useState("");
 
   // Fetch notification history from the API
   const fetchNotifications = async () => {
@@ -52,11 +53,9 @@ const Notifications = () => {
         message: notif.message,
         timestamp: new Date(notif.timestamp).toLocaleString(),
         read: notif.status === "read",
-        
       }));
 
       setNotifications(formattedData);
-      
       setUnreadCount(formattedData.filter((notif) => !notif.read).length);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -281,6 +280,7 @@ const Notifications = () => {
                         backgroundColor: "rgba(157, 68, 192, 0.1)",
                       }
                     }}
+                    onClick={() => navigate(-1)} // Add onClick handler to navigate back
                   >
                     <ArrowBack />
                   </IconButton>
@@ -449,17 +449,6 @@ const Notifications = () => {
                             }}
                           />
                         )}
-                        {/* <Typography
-                          variant="h6"
-                          sx={{
-                            color: "#FFFFFF",
-                            fontFamily: "'Poppins', sans-serif",
-                            fontWeight: 500,
-                            mb: 1,
-                          }}
-                        >
-                          {notif.title}
-                        </Typography> */}
                         <Typography
                           variant="body1"
                           sx={{
@@ -490,27 +479,26 @@ const Notifications = () => {
                             fontStyle: "italic",
                           }}
                         >
-<Link
-  to={
-    notif.message.match(/[a-f0-9]{24}/)
-      ? `/submit/${notif.message.match(/[a-f0-9]{24}/)[0]}?token=${encodeURIComponent(token)}`
-      : notif.message.match(/https:\/\/meet\.google\.com\/[a-z\-]+/)?.[0] || "#" // Default to "#" if no valid link
-  }
-  
-  target="_blank" // Open in new tab if it's a Meet link
->
-<Typography
-                          variant="caption"
-                          sx={{
-                            color: "#BBBBBB",
-                            fontFamily: "'Poppins', sans-serif",
-                            fontStyle: "italic",
-                          }}
-                        >{notif.message.match(/[a-f0-9]{24}/) ? "  View Assignment" : "  Join Meeting"}
-                        </Typography>  </Link>
-
+                          <Link
+                            to={
+                              notif.message.match(/[a-f0-9]{24}/)
+                                ? `/submit/${notif.message.match(/[a-f0-9]{24}/)[0]}?token=${encodeURIComponent(token)}`
+                                : notif.message.match(/https:\/\/meet\.google\.com\/[a-z\-]+/)?.[0] || "#"
+                            }
+                            target="_blank"
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: "#BBBBBB",
+                                fontFamily: "'Poppins', sans-serif",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              {notif.message.match(/[a-f0-9]{24}/) ? "  View Assignment" : "  Join Meeting"}
+                            </Typography>
+                          </Link>
                         </Typography>
-                        
                       </Paper>
                     </Slide>
                   ))
