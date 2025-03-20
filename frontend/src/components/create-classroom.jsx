@@ -1,7 +1,3 @@
-
-
-
-
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -20,8 +16,9 @@ import {
   List,
   ListItem,
   ListItemText,
+  Divider,
 } from "@mui/material";
-import { School } from "@mui/icons-material";
+import { School, Person, CalendarToday, Assignment } from "@mui/icons-material";
 
 export default function TeacherDashboard() {
   const location = useLocation();
@@ -45,6 +42,11 @@ export default function TeacherDashboard() {
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [course_id, setCourseId] = useState("");
+  const [teacherDetails, setTeacherDetails] = useState({
+    name: "John Doe",
+    email: "john.doe@example.com",
+    courses: ["Math 101", "Physics 202"],
+  });
   const navigate = useNavigate();
 
   const seeAssignments = async () => {
@@ -56,10 +58,10 @@ export default function TeacherDashboard() {
       setMessage("Error fetching assignments.");
     }
   };
-  
-const createMeeting = async () =>{
-  navigate(`/create_meeting`);
-}
+
+  const createMeeting = async () => {
+    navigate(`/create_meeting`);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -184,16 +186,16 @@ const createMeeting = async () =>{
 
       <Box
         sx={{
-          height: "100vh", // Full viewport height
-          width: "100vw",  // Full viewport width
+          height: "100vh",
+          width: "100vw",
           py: 4,
           px: 2,
-          m: 0,           // Remove any margins
+          m: 0,
           background: "#0a0013",
-          position: "fixed", // Fix position to cover the entire screen
+          position: "fixed",
           top: 0,
           left: 0,
-          overflow: "auto", // Allow scrolling if content overflows
+          overflow: "auto",
         }}
       >
         <Container maxWidth="md">
@@ -228,11 +230,11 @@ const createMeeting = async () =>{
                 }}
               >
                 Manage your classrooms, assignments, and students
-                <button onClick={createMeeting}>Create Meeting</button>
               </Typography>
             </Box>
           </Fade>
 
+          {/* Teacher Details Section */}
           <Slide direction="up" in={true} timeout={1000}>
             <Card
               className="neon-glow"
@@ -253,6 +255,53 @@ const createMeeting = async () =>{
                     mb: 3,
                   }}
                 >
+                  <Person sx={{ mr: 1, verticalAlign: "middle" }} />
+                  Teacher Details
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{ color: "#E0E0E0", fontFamily: "'Poppins', sans-serif", mb: 2 }}
+                >
+                  <strong>Name:</strong> {teacherDetails.name}
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{ color: "#E0E0E0", fontFamily: "'Poppins', sans-serif", mb: 2 }}
+                >
+                  <strong>Email:</strong> {teacherDetails.email}
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{ color: "#E0E0E0", fontFamily: "'Poppins', sans-serif", mb: 2 }}
+                >
+                  <strong>Courses:</strong> {teacherDetails.courses.join(", ")}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Slide>
+
+          {/* Create Classroom Section */}
+          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "200ms" }}>
+            <Card
+              className="neon-glow"
+              sx={{
+                mb: 4,
+                backgroundColor: "rgba(26, 0, 51, 0.85)",
+                borderRadius: "24px",
+                border: "1px solid rgba(157, 68, 192, 0.4)",
+              }}
+            >
+              <CardContent sx={{ p: 4 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: "#FFFFFF",
+                    fontFamily: "'Playfair Display', serif",
+                    fontWeight: 500,
+                    mb: 3,
+                  }}
+                >
+                  <Assignment sx={{ mr: 1, verticalAlign: "middle" }} />
                   Create a Course
                 </Typography>
                 <TextField
@@ -310,7 +359,57 @@ const createMeeting = async () =>{
             </Card>
           </Slide>
 
-          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "200ms" }}>
+          {/* Create Meeting Section */}
+          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "400ms" }}>
+            <Card
+              className="neon-glow"
+              sx={{
+                mb: 4,
+                backgroundColor: "rgba(26, 0, 51, 0.85)",
+                borderRadius: "24px",
+                border: "1px solid rgba(157, 68, 192, 0.4)",
+              }}
+            >
+              <CardContent sx={{ p: 4 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: "#FFFFFF",
+                    fontFamily: "'Playfair Display', serif",
+                    fontWeight: 500,
+                    mb: 3,
+                  }}
+                >
+                  <CalendarToday sx={{ mr: 1, verticalAlign: "middle" }} />
+                  Create Meeting
+                </Typography>
+                <Button
+                  size="small"
+                  fullWidth
+                  variant="contained"
+                  onClick={createMeeting}
+                  sx={{
+                    py: 1.5,
+                    background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)",
+                    fontWeight: "500",
+                    letterSpacing: "2px",
+                    borderRadius: "12px",
+                    fontFamily: "'Poppins', sans-serif",
+                    color: "#FFFFFF",
+                    "&:hover": {
+                      background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)",
+                      transform: "translateY(-2px)",
+                    },
+                  }}
+                >
+                  Schedule a Meeting
+                </Button>
+              </CardContent>
+            </Card>
+          </Slide>
+
+          {/* Enrolled Students Section */}
+          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "600ms" }}>
             <Card
               className="neon-glow"
               sx={{
@@ -398,7 +497,8 @@ const createMeeting = async () =>{
             </Card>
           </Slide>
 
-          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "400ms" }}>
+          {/* Create Assignment Section */}
+          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "800ms" }}>
             <Card
               className="neon-glow"
               sx={{
@@ -656,7 +756,7 @@ const createMeeting = async () =>{
                     },
                   }}
                 />
-                                <TextField
+                <TextField
                   label="Assignment ID for Assignments notification"
                   value={assignmentid}
                   onChange={(e) => setAssignmentId(e.target.value)}
@@ -703,48 +803,6 @@ const createMeeting = async () =>{
                 >
                   Notify All Students
                 </Button>
-
-<p> add ui to these buttons</p>
-
-                {/* <Button
-                  onClick={seeSubmissions}
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    py: 1.5,
-                    background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)",
-                    fontWeight: "500",
-                    letterSpacing: "2px",
-                    borderRadius: "12px",
-                    fontFamily: "'Poppins', sans-serif",
-                    color: "#FFFFFF",
-                    "&:hover": {
-                      background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)",
-                      transform: "translateY(-2px)",
-                    },
-                  }}
-                >
-                  See Submissions
-                </Button>
-                {submissions.length > 0 ? (
-                  <List sx={{ mt: 2 }}>
-                    {submissions.map((assignment) => (
-                      <ListItem key={assignment._id}>
-                        <ListItemText
-                          primary={`${assignment.assignment_id} - Student ID: ${assignment.student_id}`}
-                          sx={{ color: "#E0E0E0", fontFamily: "'Poppins', sans-serif" }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 2, color: "#9D44C0", textAlign: "center" }}
-                  >
-                    No Submissions found.
-                  </Typography>  )}*/}
-               
               </CardContent>
             </Card>
           </Slide>
