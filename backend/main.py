@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response
+from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response, Request
 from redis import Redis
 import jwt
 from pydantic import BaseModel
@@ -16,6 +16,12 @@ from keybert import KeyBERT
 import gridfs
 import os
 from fastapi import Header
+import json
+from fastapi.responses import RedirectResponse, JSONResponse
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
 kw_model = KeyBERT()
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
@@ -30,7 +36,7 @@ assignments=db["assignments"]
 submissions=db["submissions"]
 resources=db["resources"]
 
-
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 fs = motor.motor_asyncio.AsyncIOMotorGridFSBucket(db)
 import io
 # Constants
@@ -38,7 +44,11 @@ SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 
+SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+CLIENT_SECRET_FILE = "client_secret.json"  # Make sure this file exists
+REDIRECT_URI = "http://127.0.0.1:8000/oauth2callback"
 
+TOKEN_FILE = "token.json"  # Token storage
 
 
 app = FastAPI()
@@ -154,8 +164,6 @@ def insert_first():
     print("Users inserted successfully!")
 from fastapi import Query,Form
 
-
-
 @app.post("/login")
 async def login(request: LoginRequest):
     user_list = await users.find({"user_id": request.username}).to_list(1)
@@ -167,7 +175,6 @@ async def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = jwt.encode({"id": request.username, "role": user["role"]}, SECRET_KEY, algorithm="HS256")
     return {"token": token}
-
 
 @app.post("/upload")
 async def upload_resource(
@@ -199,7 +206,6 @@ async def upload_resource(
     result = await resources.insert_one(resource_doc)
     return {"id": str(result.inserted_id), "tags": tags}
 
-
 @app.get("/search")
 async def search_resources(tags: List[str] = Query(...)):
     search_results = await resources.find(
@@ -214,7 +220,6 @@ async def search_resources(tags: List[str] = Query(...)):
     
     return search_results
 
-
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
     assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
@@ -226,7 +231,6 @@ async def get_assignment(course_id: str):
         doc["_id"] = str(doc["_id"])
     
     return assignment
-
 
 @app.post("/create_assignments")
 async def create_assignments(assignment: dict, user: dict = Depends(verify_token)):
@@ -244,6 +248,7 @@ async def get_due_date(assignment_id: str):
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
     return {"due_date": assignment["due_date"]}
+
 @app.post("/submit")
 async def submit_assignment(
     
@@ -278,7 +283,6 @@ async def submit_assignment(
     result = await submissions.insert_one(submission_data)
     return {"message": "Assignment submitted successfully", "file_id": str(file_id) if file_id else None}
 
-### 📥 **Fetching Submissions for an Assignment**
 @app.get("/submissions/{assignment_id}", response_model=List[dict])
 async def get_submissions(assignment_id: str, user: dict = Depends(verify_token)):
     if user["role"] != "teacher":
@@ -296,7 +300,6 @@ async def get_submissions(assignment_id: str, user: dict = Depends(verify_token)
     
     return submission_list
 
-### 📑 **Fetching a Specific Submission**
 @app.get("/submission/{submission_id}")
 async def get_submission(submission_id: str, user: dict = Depends(verify_token)):
     if user["role"] != "teacher":
@@ -313,7 +316,6 @@ async def get_submission(submission_id: str, user: dict = Depends(verify_token))
     
     return submission
 
-### 📂 **Downloading a Submission File**
 @app.get("/download/{file_id}")
 async def download_file(file_id: str, user: dict = Depends(verify_token)):
     if user["role"] != "teacher":
@@ -331,9 +333,6 @@ async def download_file(file_id: str, user: dict = Depends(verify_token)):
         )
     except Exception:
         raise HTTPException(status_code=404, detail="File not found")
-
-
-
 
 @app.post("/create_classroom")
 async def create_classroom(request: CreateClassroomRequest, user: dict = Depends(verify_token)):
@@ -357,7 +356,6 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
 
     # return {"class_id": str(id)}
 
-
 @app.get("/students_in_courses/{course_id}")
 async def students_in_courses(course_id: str):
     # Fetch the classroom from MongoDB
@@ -368,7 +366,6 @@ async def students_in_courses(course_id: str):
     # Fetch the students from MongoDB
     print(classroom["students"])
     return {"students": classroom["students"]}
-    
     
 @app.post("/join_classroom")
 async def join_classroom(
@@ -399,7 +396,6 @@ async def join_classroom(
     )
 
     return {"message": "Joined classroom successfully", "class_id": request.class_id}
-
 
 @app.websocket("/ws/notifications")
 async def notifications_websocket(websocket: WebSocket):
@@ -441,7 +437,6 @@ async def notifications_websocket(websocket: WebSocket):
         listen_task.cancel()
         await listen_task
         await websocket.close()
-        
 
 @app.get("/notification")
 async def get_notifications(user: dict = Depends(verify_token)):
@@ -449,7 +444,6 @@ async def get_notifications(user: dict = Depends(verify_token)):
     x=convert_mongo_document(notifications)
     print(x)
     return x 
-
 
 @app.put("/notificatio/read")
 async def mark_as_read(user: dict = Depends(verify_token)):
@@ -515,6 +509,27 @@ async def send_notification_to_all( course_id: str,assignment_id:str):
             
     return {"message": "Notification sent to all students"}
 
+@app.get("/notify_all_meet/{course_id}")
+async def send_notification_to_all(course_id: str, meet_link: str = Query(...)):
+    if not meet_link:
+        raise HTTPException(status_code=400, detail="Meet link is required")
+    
+    classroom = await courses.find_one({"class_id": course_id})
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+
+    for student in classroom["students"]:
+        user_id = student
+        data = f"New lecture link: {meet_link} has been posted for {course_id}"
+        data_to_store = {
+            "user_id": user_id,
+            "message": data,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "unread"
+        }
+        await collection.insert_one(data_to_store)
+
+    return {"message": "Notification sent to all students"}
 
 @app.websocket("/ws/{class_id}")
 async def classroom_websocket(websocket: WebSocket, class_id: str):
@@ -577,9 +592,62 @@ async def classroom_websocket(websocket: WebSocket, class_id: str):
         pubsub.close()  # Close Redis pubsub
         await websocket.close()  # Close WebSocket connection
 
+def load_credentials():
+    """Load credentials from token.json if available."""
+    if os.path.exists(TOKEN_FILE):
+        return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    return None
 
-# @app.post("/upload_resource")
-# async def upload_resource():
+
+@app.get("/auth")
+def authenticate():
     
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES, redirect_uri=REDIRECT_URI)
+    auth_url, _ = flow.authorization_url(prompt="consent")
+    return RedirectResponse(auth_url)
 
+
+@app.get("/oauth2callback")
+async def oauth_callback(request: Request):
+    """Handle OAuth2 callback and store user credentials."""
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES, redirect_uri=REDIRECT_URI)
+    
+    # Fetch authorization token
+    flow.fetch_token(authorization_response=str(request.url._url))
+    credentials = flow.credentials
+
+    # Save token to file
+    with open(TOKEN_FILE, "w") as token_file:
+        token_file.write(credentials.to_json())
+
+    return JSONResponse({"message": "Authentication successful! You can now create events."})
+
+
+@app.get("/create-event")
+def create_event():
+    """Create a Google Calendar event with Google Meet link."""
+    creds = load_credentials()
+    if not creds:
+        return JSONResponse({"error": "User not authenticated. Please log in."}, status_code=401)
+
+    service = build("calendar", "v3", credentials=creds)
+
+    event = {
+        "summary": "Virtual Classroom Session",
+        "start": {"dateTime": "2025-03-08T10:00:00", "timeZone": "Asia/Kolkata"},
+        "end": {"dateTime": "2025-03-08T11:00:00", "timeZone": "Asia/Kolkata"},
+        "conferenceData": {
+            "createRequest": {
+                "requestId": "classroom-meet",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"}
+            }
+        },
+    }
+
+    event = service.events().insert(
+        calendarId="primary", body=event, conferenceDataVersion=1
+    ).execute()
+
+    return {"meet_link": event.get("hangoutLink", "No Meet link generated")}
+    
 
