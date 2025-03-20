@@ -490,14 +490,25 @@ const Notifications = () => {
                             fontStyle: "italic",
                           }}
                         >
-                         <Link
-  to={`/submit/${
-    notif.message.match(/[a-f0-9]{24}/)?.[0] || "" // Extracts ObjectID or falls back to empty string
-  }?token=${encodeURIComponent(token)}`}
-  style={{ color: "blue", textDecoration: "underline" }}
+<Link
+  to={
+    notif.message.match(/[a-f0-9]{24}/)
+      ? `/submit/${notif.message.match(/[a-f0-9]{24}/)[0]}?token=${encodeURIComponent(token)}`
+      : notif.message.match(/https:\/\/meet\.google\.com\/[a-z\-]+/)?.[0] || "#" // Default to "#" if no valid link
+  }
+  
+  target="_blank" // Open in new tab if it's a Meet link
 >
-  View Assignment
-</Link>
+<Typography
+                          variant="caption"
+                          sx={{
+                            color: "#BBBBBB",
+                            fontFamily: "'Poppins', sans-serif",
+                            fontStyle: "italic",
+                          }}
+                        >{notif.message.match(/[a-f0-9]{24}/) ? "  View Assignment" : "  Join Meeting"}
+                        </Typography>  </Link>
+
                         </Typography>
                         
                       </Paper>

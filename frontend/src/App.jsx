@@ -9,6 +9,7 @@ import TeacherDashboard from "./components/create-classroom.jsx";
 import ResourceSharing from "./components/resourses.jsx";
 import AssignmentSubmission from "./components/submissions.jsx";
 import SubmissionsTable from "./components/seesubmissions.jsx";
+import GoogleCalendarAuth from "./components/create_meeting.jsx";
 
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <Route path="/chatroom/:id" element={<Chatroom />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/resourses" element={<ResourceSharing />} />
+        <Route path="/create_meeting" element={<GoogleCalendarAuth />} />
         <Route path="/submit/:assignmentId" element={<AssignmentSubmission />} />
         <Route path="/seesubmissions/:assignmentId" element={<SubmissionsTable />} />
       </Routes>

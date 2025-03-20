@@ -57,9 +57,9 @@ export default function TeacherDashboard() {
     }
   };
   
-//   const seeSubmissions = async (e) => {
-//     navigate(`/seesubmissions/${e}?token=${token}`);
-// };
+const createMeeting = async () =>{
+  navigate(`/create_meeting`);
+}
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -228,6 +228,7 @@ export default function TeacherDashboard() {
                 }}
               >
                 Manage your classrooms, assignments, and students
+                <button onClick={createMeeting}>Create Meeting</button>
               </Typography>
             </Box>
           </Fade>
