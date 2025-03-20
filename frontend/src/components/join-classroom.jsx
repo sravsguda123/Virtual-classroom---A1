@@ -217,7 +217,7 @@ const JoinClassroom = () => {
               </IconButton>
             </Tooltip>
             
-            <Tooltip title="Assignments">
+            {/* <Tooltip title="Assignments">
               <IconButton 
                 className="nav-button"
                 color="inherit" 
@@ -229,7 +229,7 @@ const JoinClassroom = () => {
               >
                 <Assignment />
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
             
             <Tooltip title="Resources">
               <IconButton 

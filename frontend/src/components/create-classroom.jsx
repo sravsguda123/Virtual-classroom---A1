@@ -57,9 +57,9 @@ export default function TeacherDashboard() {
     }
   };
   
-  const seeSubmissions = async () => {
-    navigate(`/seesubmissions?token=${token}`);
-};
+//   const seeSubmissions = async (e) => {
+//     navigate(`/seesubmissions/${e}?token=${token}`);
+// };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -617,7 +617,7 @@ export default function TeacherDashboard() {
                         <ListItemText
                           primary={`ID:${assignment._id}::${assignment.title} - Due: ${assignment.due_date}`}
                           sx={{ color: "#E0E0E0", fontFamily: "'Poppins', sans-serif" }}
-                        />
+                        /> <button onClick={() => navigate(`/seesubmissions/${assignment._id}?token=${token}`)}>Submissions</button>
                       </ListItem>
                     ))}
                   </List>
@@ -705,7 +705,7 @@ export default function TeacherDashboard() {
 
 <p> add ui to these buttons</p>
 
-                <Button
+                {/* <Button
                   onClick={seeSubmissions}
                   variant="contained"
                   fullWidth
@@ -742,8 +742,8 @@ export default function TeacherDashboard() {
                     sx={{ mt: 2, color: "#9D44C0", textAlign: "center" }}
                   >
                     No Submissions found.
-                  </Typography>
-                )}
+                  </Typography>  )}*/}
+               
               </CardContent>
             </Card>
           </Slide>

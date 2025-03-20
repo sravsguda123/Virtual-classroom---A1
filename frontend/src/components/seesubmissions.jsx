@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useLocation } from "react-router-dom";
+import { useLocation , useParams } from "react-router-dom";
 const SubmissionsTable = () => {
-    const [assignmentId, setAssignmentId] = useState(""); // Set this from an input field
     const [submissions, setSubmissions] = useState([]); // Store all submissions
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const token = queryParams.get("token");
+    const { assignmentId } = useParams();
 
-    useEffect(() => {
+   
         const fetchSubmissions = async () => {
             try {
-                if (!assignmentId) return; // Prevent API call if assignmentId is empty
                 const response = await axios.get(`http://127.0.0.1:8000/submissions/${assignmentId}`
                     , {
                       headers: {
@@ -24,21 +23,21 @@ const SubmissionsTable = () => {
                 console.error("Error fetching submissions:", error);
             }
         };
-
-        fetchSubmissions();
-    }, [assignmentId]); // Runs when assignmentId changes
+ // Runs when assignmentId changes
 
     return (
         <div>
             <h2>Submissions for Assignment {assignmentId}</h2>
             
             {/* Input field to enter assignment ID */}
-            <input
+            {/* <input
                 type="text"
                 placeholder="Enter Assignment ID"
                 value={assignmentId}
                 onChange={(e) => setAssignmentId(e.target.value)}
-            />
+            /> */}
+
+            <button onClick={fetchSubmissions}> See Submissions </button>
 
             {submissions.length === 0 ? (
                 <p>No submissions found.</p>

@@ -15,7 +15,8 @@ import shutil
 from keybert import KeyBERT
 import gridfs
 import os
-
+from fastapi import Header
+kw_model = KeyBERT()
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
@@ -63,9 +64,6 @@ async def show_routes():
     print("Registered routes:", routes)
 async def create_indexes():
     await resources.create_index([("tags", 1)])
-
-
-        
 def calculate_score(resource):
     return (resource.get("likes", 0) * 5 + 
             resource.get("downloads", 0) * 3 + 
@@ -81,8 +79,7 @@ def convert_mongo_document(doc):
     else:
         return doc
 
-from fastapi import Header
-kw_model = KeyBERT()
+
 
 def verify_token(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
@@ -95,7 +92,6 @@ def verify_token(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-
 async def verify_token_for_socket(websocket: WebSocket):
     token = websocket.query_params.get("token")
     if not token:
@@ -133,7 +129,6 @@ class SubmissionCreate(BaseModel):
     file: Optional[UploadFile] = None
     link: Optional[HttpUrl] = None
     mcq_answers: Optional[dict] = None
-
 class Resource(BaseModel):
     title:str
     description:str
@@ -243,7 +238,12 @@ async def create_assignments(assignment: dict, user: dict = Depends(verify_token
     result = await assignments.insert_one(assignment)
     return {"message": "Created assignment successfully", "assignment_id": str(result.inserted_id)}
 
-### 📩 **Submitting an Assignment (Fixing Optional File)**
+@app.get("/assignment_due_date/{assignment_id}")
+async def get_due_date(assignment_id: str):
+    assignment = await assignments.find_one({"_id": ObjectId(assignment_id)})
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return {"due_date": assignment["due_date"]}
 @app.post("/submit")
 async def submit_assignment(
     
@@ -260,7 +260,7 @@ async def submit_assignment(
     file_id = None
     if file:
         file_id = await fs.upload_from_stream(file.filename, file.file)
-
+        print("assignment id reciveed is ",assignment_id)
     submission_data = {
         "assignment_id": assignment_id,
         "student_id": user["id"],
@@ -490,6 +490,7 @@ async def send_notification(websocket: WebSocket, user_id: str):
         "message": data,
         "timestamp": datetime.utcnow().isoformat(),
         "status": "unread",
+          
     }
             await collection.insert_one(data_to_store)  # Store in MongoDB
             await redis_client.publish(user_id, json.dumps(data))
@@ -528,7 +529,7 @@ async def classroom_websocket(websocket: WebSocket, class_id: str):
         user = verify_token(f"Bearer {token}")  # Add "Bearer " prefix
     except HTTPException as e:
         await websocket.close(code=1008)  # Close connection due to invalid token
-        raise e  # Raise the HTTPException
+        raise e  # Raise theHTTPException
 
     await websocket.accept()
 

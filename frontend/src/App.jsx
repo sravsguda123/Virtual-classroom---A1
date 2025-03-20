@@ -22,8 +22,8 @@ function App() {
         <Route path="/chatroom/:id" element={<Chatroom />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/resourses" element={<ResourceSharing />} />
-        <Route path="/submit" element={<AssignmentSubmission />} />
-        <Route path="/seesubmissions" element={<SubmissionsTable />} />
+        <Route path="/submit/:assignmentId" element={<AssignmentSubmission />} />
+        <Route path="/seesubmissions/:assignmentId" element={<SubmissionsTable />} />
       </Routes>
     </Router>
     

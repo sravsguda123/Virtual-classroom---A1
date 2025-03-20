@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {useLocation} from "react-router-dom";
 import axios from "axios";
-
+import { useParams } from "react-router-dom";
 const AssignmentSubmission = () => {
-  const [assignmentId, setAssignmentId] = useState(""); 
-  
+  const { assignmentId } = useParams(); 
   const [textContent, setTextContent] = useState("");
   const location=useLocation();
   const params = new URLSearchParams(location.search);
@@ -12,6 +11,19 @@ const AssignmentSubmission = () => {
   const [link, setLink] = useState("");
   const [file, setFile] = useState(null);
   const [mcqAnswers, setMcqAnswers] = useState("");
+  const [duedate, setDuedate] = useState(""); 
+useEffect(() => {
+    const fetchDueDate = async () => {
+      try {
+        const response = await axios.get(`http://127.0.0.1:8000/assignment_due_date/${assignmentId}`);
+        setDuedate(response.data.due_date);
+        console.log(response.data.due_date);
+      } catch (error) {
+        console.error("Error fetching due date:", error);
+      }
+    }
+    if (assignmentId) fetchDueDate(); 
+  }, [assignmentId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,16 +54,11 @@ const AssignmentSubmission = () => {
   return (
     <div>
       <h2>Submit Assignment</h2>
+      <h2>Due Date: {duedate}</h2>
+
       <form onSubmit={handleSubmit}>
         {/* ✅ New Assignment ID Input */}
-        <input
-          type="text"
-          placeholder="Enter Assignment ID"
-          value={assignmentId}
-          onChange={(e) => setAssignmentId(e.target.value)}
-          required
-        />
-
+        
         <textarea
           placeholder="Write your answer..."
           value={textContent}

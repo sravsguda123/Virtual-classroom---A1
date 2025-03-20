@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom"
+import { Link } from "react-router-dom";
 import axios from "axios";
 import {
   Container,
@@ -29,6 +30,7 @@ const Notifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
+  const [assignmentId,setAssignmentID] = useState("");
 
   // Fetch notification history from the API
   const fetchNotifications = async () => {
@@ -46,13 +48,15 @@ const Notifications = () => {
       // Transform the notifications to match expected structure
       const formattedData = data.map((notif) => ({
         id: notif._id,
-        
+        sub_id: notif.submission_id,
         message: notif.message,
         timestamp: new Date(notif.timestamp).toLocaleString(),
         read: notif.status === "read",
+        
       }));
 
       setNotifications(formattedData);
+      
       setUnreadCount(formattedData.filter((notif) => !notif.read).length);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -477,6 +481,25 @@ const Notifications = () => {
                         >
                           {notif.timestamp}
                         </Typography>
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#BBBBBB",
+                            fontFamily: "'Poppins', sans-serif",
+                            fontStyle: "italic",
+                          }}
+                        >
+                         <Link
+  to={`/submit/${
+    notif.message.match(/[a-f0-9]{24}/)?.[0] || "" // Extracts ObjectID or falls back to empty string
+  }?token=${encodeURIComponent(token)}`}
+  style={{ color: "blue", textDecoration: "underline" }}
+>
+  View Assignment
+</Link>
+                        </Typography>
+                        
                       </Paper>
                     </Slide>
                   ))
