@@ -62,6 +62,24 @@ const SubmissionsTable = () => {
     if (assignmentId) fetchSubmissions();
   }, [assignmentId, token]);
 
+
+//   const handleDownload = async (fileId) => {
+//     try {
+//         const response = await axios.get(`http://127.0.0.1:8000/download/${fileId}`, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//             responseType: 'blob',
+//         });
+//         const url = window.URL.createObjectURL(new Blob([response.data]));
+//         console.log("URL:", url);
+//     } catch (error) {
+//         console.error("Error downloading file:", error);
+//     }
+// };
+
+
+
   const handleRefresh = () => {
     setShowContent(false);
     setTimeout(() => {
@@ -509,6 +527,8 @@ const SubmissionsTable = () => {
                                     }}
                                   >
                                     {submission.file_id || "No File"}
+                                    <button onClick={() => axios.get(`http://127.0.0.1:8000/download/${submission.file_id}`, { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }).then(res => { const url = window.URL.createObjectURL(new Blob([res.data])); const link = document.createElement("a"); link.href = url; link.setAttribute("download", `file_${submission.file_id}.pdf`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }).catch(err => console.error("Error downloading file:", err))} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Download File</button>
+
                                   </Typography>
                                 </TableCell>
                               </TableRow>
@@ -550,3 +570,107 @@ const SubmissionsTable = () => {
 };
 
 export default SubmissionsTable;
+
+
+
+
+
+// import { useState } from "react";
+// import axios from "axios";
+// import { useLocation, useParams } from "react-router-dom";
+
+// const SubmissionsTable = () => {
+//     const [submissions, setSubmissions] = useState([]);
+//     const location = useLocation();
+//     const queryParams = new URLSearchParams(location.search);
+//     const token = queryParams.get("token");
+//     const { assignmentId } = useParams();
+
+//     const fetchSubmissions = async () => {
+//         try {
+//             const response = await axios.get(http://127.0.0.1:8000/submissions/${assignmentId}, {
+//                 headers: {
+//                     Authorization: Bearer ${token},
+//                 },
+//             });
+//             setSubmissions(response.data);
+//         } catch (error) {
+//             console.error("Error fetching submissions:", error);
+//         }
+//     };
+
+//     const handleDownload = async (fileId) => {
+//         try {
+//             const response = await axios.get(http://127.0.0.1:8000/download/${fileId}, {
+//                 headers: {
+//                     Authorization: Bearer ${token},
+//                 },
+//                 responseType: 'blob',
+//             });
+//             const url = window.URL.createObjectURL(new Blob([response.data]));
+//             const link = document.createElement('a');
+//             link.href = url;
+//             const contentDisposition = response.headers['content-disposition'];
+//             if (contentDisposition) {
+//                 const filename = contentDisposition.split('filename=')[1].trim().replace(/"/g, '');
+//                 link.setAttribute('download', filename);
+//             } else {
+//                 link.setAttribute('download', 'file');
+//             }
+//             document.body.appendChild(link);
+//             link.click();
+//             link.parentNode.removeChild(link);
+//         } catch (error) {
+//             console.error("Error downloading file:", error);
+//         }
+//     };
+
+//     return (
+//         <div>
+//             <h2>Submissions for Assignment {assignmentId}</h2>
+//             <button onClick={fetchSubmissions}>See Submissions</button>
+//             {submissions.length === 0 ? (
+//                 <p>No submissions found.</p>
+//             ) : (
+//                 <table border="1">
+//                     <thead>
+//                         <tr>
+//                             <th>Submission ID</th>
+//                             <th>Student ID</th>
+//                             <th>Text Content</th>
+//                             <th>Link</th>
+//                             <th>File</th>
+//                         </tr>
+//                     </thead>
+//                     <tbody>
+//                         {submissions.map((submission) => (
+//                             <tr key={submission._id}>
+//                                 <td>{submission._id}</td>
+//                                 <td>{submission.student_id}</td>
+//                                 <td>{submission.text_content || "N/A"}</td>
+//                                 <td>
+//                                     {submission.link ? (
+//                                         <a href={submission.link} target="_blank" rel="noopener noreferrer">
+//                                             Open Link
+//                                         </a>
+//                                     ) : (
+//                                         "No Link"
+//                                     )}
+//                                 </td>
+//                                 <td>
+//                                     {submission.file_id ? (
+//                                         <button onClick={() => handleDownload(submission.file_id)}>Download File</button>
+//                                     ) : (
+//                                         "No File"
+//                                     )}
+//                                 </td>
+//                             </tr>
+//                         ))}
+//                     </tbody>
+//                 </table>
+//             )}
+//         </div>
+//     );
+// };
+
+// export default SubmissionsTable;

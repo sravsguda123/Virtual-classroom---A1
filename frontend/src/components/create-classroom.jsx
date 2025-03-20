@@ -58,7 +58,7 @@ export default function TeacherDashboard() {
   };
   
 const createMeeting = async () =>{
-  navigate(`/create_meeting`);
+  navigate(`/create_meeting?token=${token}`);
 }
 
   const handleSubmit = async (e) => {
