@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   Container,
@@ -23,6 +24,7 @@ import {
 } from "@mui/icons-material";
 
 export default function GoogleCalendarAuth() {
+  const navigate = useNavigate();
   const [meetingLink, setMeetingLink] = useState("");
   const [courseId, setCourseId] = useState("");
   const [assignmentId, setAssignmentId] = useState("");
@@ -317,6 +319,7 @@ export default function GoogleCalendarAuth() {
                         backgroundColor: "rgba(157, 68, 192, 0.1)",
                       }
                     }}
+                    onClick={() => navigate(-1)}
                   >
                     <ArrowBack />
                   </IconButton>

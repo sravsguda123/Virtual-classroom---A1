@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   Container,
   Paper,
@@ -30,6 +30,7 @@ import {
 } from "@mui/icons-material";
 
 const SubmissionsTable = () => {
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
@@ -294,6 +295,7 @@ const SubmissionsTable = () => {
                         backgroundColor: "rgba(157, 68, 192, 0.1)",
                       },
                     }}
+                    onClick={() => navigate(-1)}
                   >
                     <ArrowBack />
                   </IconButton>
