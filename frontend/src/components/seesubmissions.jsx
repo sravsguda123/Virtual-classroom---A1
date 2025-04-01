@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate, Link } from "react-router-dom";
 import {
   Container,
   Paper,
@@ -27,6 +27,7 @@ import {
   TextSnippet,
   Link as LinkIcon,
   Refresh,
+  Grade,
 } from "@mui/icons-material";
 
 const SubmissionsTable = () => {
@@ -62,22 +63,6 @@ const SubmissionsTable = () => {
 
     if (assignmentId) fetchSubmissions();
   }, [assignmentId, token]);
-
-
-//   const handleDownload = async (fileId) => {
-//     try {
-//         const response = await axios.get(`http://127.0.0.1:8000/download/${fileId}`, {
-//             headers: {
-//                 Authorization: `Bearer ${token}`,
-//             },
-//             responseType: 'blob',
-//         });
-//         const url = window.URL.createObjectURL(new Blob([response.data]));
-//         console.log("URL:", url);
-//     } catch (error) {
-//         console.error("Error downloading file:", error);
-//     }
-// };
 
 
 
@@ -532,6 +517,30 @@ const SubmissionsTable = () => {
                                     <button onClick={() => axios.get(`http://127.0.0.1:8000/download/${submission.file_id}`, { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }).then(res => { const url = window.URL.createObjectURL(new Blob([res.data])); const link = document.createElement("a"); link.href = url; link.setAttribute("download", `file_${submission.file_id}.pdf`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }).catch(err => console.error("Error downloading file:", err))} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Download File</button>
 
                                   </Typography>
+                                </TableCell>
+                                {/* Grade Cell */}
+                                <TableCell>
+                                  <Link 
+                                    to={`/grade/${assignmentId}?token=${token}`}
+                                    style={{ textDecoration: "none" }}
+                                  >
+                                    <Button
+                                      variant="contained"
+                                      startIcon={<Grade />}
+                                      sx={{
+                                        backgroundColor: "rgba(46, 204, 113, 0.15)",
+                                        color: "#2ECC71",
+                                        fontFamily: "'Poppins', sans-serif",
+                                        textTransform: "none",
+                                        borderRadius: "12px",
+                                        "&:hover": {
+                                          backgroundColor: "rgba(46, 204, 113, 0.25)",
+                                        },
+                                      }}
+                                    >
+                                      Grade
+                                    </Button>
+                                  </Link>
                                 </TableCell>
                               </TableRow>
                             ))}
