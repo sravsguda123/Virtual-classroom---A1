@@ -9,4 +9,3 @@ backend/env
 # Frontend
 frontend\node_modules
 backend/ai-secret.json
-ai-secret.json
