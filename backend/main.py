@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response, Request
+from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response, Request, Form
 from redis import Redis
 import jwt
 from pydantic import BaseModel
@@ -341,6 +341,65 @@ async def download_file(file_id: str, user: dict = Depends(verify_token)):
         )
     except Exception:
         raise HTTPException(status_code=404, detail="File not found")
+    
+@app.post("/grade_submission")
+async def grade_submission(
+    submission_id: str = Form(...),
+    mark: float = Form(...),
+    user: dict = Depends(verify_token)
+):
+    # Ensure only teachers can grade submissions
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can grade submissions")
+    
+    # Update the submission document with the new mark
+    result = await submissions.update_one(
+        {"_id": ObjectId(submission_id)},
+        {"$set": {"mark": mark}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found or grade not updated")
+    return {"message": "Submission graded successfully"}
+
+@app.get("/assignment_marks/{assignment_id}")
+async def assignment_marks(assignment_id: str, user: dict = Depends(verify_token)):
+    # Only teachers can view all marks for an assignment
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view all marks")
+    marks = await submissions.find({"assignment_id": assignment_id}).to_list(length=None)
+    for sub in marks:
+        sub["_id"] = str(sub["_id"])
+        if "file_id" in sub and sub["file_id"]:
+            sub["file_id"] = str(sub["file_id"])
+    return marks
+
+@app.get("/my_mark/{submission_id}")
+async def my_mark(submission_id: str, user: dict = Depends(verify_token)):
+    submission = await submissions.find_one({"_id": ObjectId(submission_id)})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    # For students, ensure they can only view their own submission's mark
+    if user["role"] == "student" and submission.get("student_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="You are not authorized to view this submission's mark")
+    return {"submission_id": submission_id, "mark": submission.get("mark")}
+
+
+@app.get("/my_submissions")
+async def my_submissions(user: dict = Depends(verify_token)):
+    # Only for students
+    if user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can access their submissions")
+    
+    # Find all submissions by this student
+    student_submissions = await submissions.find({"student_id": user["id"]}).to_list(length=None)
+    
+    # Convert ObjectIDs to strings for JSON serialization
+    for sub in student_submissions:
+        sub["_id"] = str(sub["_id"])
+        if "file_id" in sub and sub["file_id"]:
+            sub["file_id"] = str(sub["file_id"])
+    
+    return student_submissions
 
 @app.post("/create_classroom")
 async def create_classroom(request: CreateClassroomRequest, user: dict = Depends(verify_token)):
