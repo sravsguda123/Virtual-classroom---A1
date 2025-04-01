@@ -625,6 +625,7 @@ const JoinClassroom = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
+  const token = params.get("token") || localStorage.getItem("token");
   const [classroomId, setClassroomId] = useState("");
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
@@ -654,7 +655,7 @@ const JoinClassroom = () => {
   // Fetch student submissions
   useEffect(() => {
     const fetchSubmissions = async () => {
-      const token = localStorage.getItem("token");
+     
       if (token) {
         setLoading(true);
         try {
@@ -679,7 +680,7 @@ const JoinClassroom = () => {
   }, []);
 
   const handleJoinClassroom = async () => {
-    const token = localStorage.getItem("token");
+    
 
     if (!token) {
       setMessage("You are not authorized to join a classroom.");
@@ -717,7 +718,7 @@ const JoinClassroom = () => {
   };
 
   const navigateTo = (path) => {
-    const token = localStorage.getItem("token");
+    
     if (!token) {
       setMessage("You are not authorized to access this feature.");
       setShowMessage(true);
@@ -727,12 +728,11 @@ const JoinClassroom = () => {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
+    
     navigate("/");
   };
 
   const viewGrade = (submissionId) => {
-    const token = localStorage.getItem("token");
     if (token) {
       navigate(`/grade_view/${submissionId}?token=${token}`);
     }
