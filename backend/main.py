@@ -64,9 +64,17 @@ redis_host = "localhost"  # The host of the remote Redis service
 redis_port = 6379  # Usually 6379 for Redis # If authentication is required
 
 # Connect to the remote Redis API
+# redis_client = redis.Redis(
+#     host=redis_host,
+#     port=redis_port,)
+
 redis_client = redis.Redis(
-    host=redis_host,
-    port=redis_port,)
+    host='equipped-gnat-18381.upstash.io',
+    port=6379,
+    password="AUfNAAIjcDE1YTAyMDBlNjVhMzM0MTlhOTk0MWNjNjY0MWM1NDE5M3AxMA",
+    ssl=True
+)
+
 @app.on_event("startup")
 async def show_routes():
     from fastapi.routing import APIRoute
@@ -347,14 +355,7 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
     result = await courses.insert_one(clas)  # Insert into MongoDB
     return {"class_id": str(result.inserted_id)}
     
-    # class_id = classrooms_db.update({
-    #     "name": request.name,
-    #     "teacher": user["id"],
-    #     "students": []
-        
-    # })
 
-    # return {"class_id": str(id)}
 
 @app.get("/students_in_courses/{course_id}")
 async def students_in_courses(course_id: str):
@@ -510,26 +511,21 @@ async def send_notification_to_all( course_id: str,assignment_id:str):
     return {"message": "Notification sent to all students"}
 
 @app.get("/notify_all_meet/{course_id}")
-async def send_notification_to_all(course_id: str, meet_link: str = Query(...)):
-    if not meet_link:
-        raise HTTPException(status_code=400, detail="Meet link is required")
-    
+async def send_notification_to_all( course_id: str,meet_link: str = Query(...)):
     classroom = await courses.find_one({"class_id": course_id})
     if not classroom:
         raise HTTPException(status_code=404, detail="Classroom not found")
+    else:
+        for student in classroom["students"]:
+             user_id=student
+             data=f"New lecture link: {meet_link} has been posted for {course_id}"
+             print(user_id)
+             data_to_store = {"user_id": user_id,"message": data,"timestamp": datetime.utcnow().isoformat(),"status": "unread"}
+             await collection.insert_one(data_to_store)
 
-    for student in classroom["students"]:
-        user_id = student
-        data = f"New lecture link: {meet_link} has been posted for {course_id}"
-        data_to_store = {
-            "user_id": user_id,
-            "message": data,
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": "unread"
-        }
-        await collection.insert_one(data_to_store)
-
+            
     return {"message": "Notification sent to all students"}
+
 
 @app.websocket("/ws/{class_id}")
 async def classroom_websocket(websocket: WebSocket, class_id: str):
