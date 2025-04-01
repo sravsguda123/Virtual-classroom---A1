@@ -68,12 +68,7 @@ redis_client = redis.Redis(
     host=redis_host,
     port=redis_port,)
 
-# redis_client = redis.Redis(
-#     host='equipped-gnat-18381.upstash.io',
-#     port=6379,
-#     password="AUfNAAIjcDE1YTAyMDBlNjVhMzM0MTlhOTk0MWNjNjY0MWM1NDE5M3AxMA",
-#     ssl=True
-# )
+
 
 @app.on_event("startup")
 async def show_routes():
