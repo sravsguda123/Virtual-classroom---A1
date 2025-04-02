@@ -114,13 +114,16 @@ export default function TeacherDashboard() {
 
   const notifyStudents = async () => {
     try {
+      console.log("Course ID:", course_id);  // Should print actual values
+console.log("Assignment ID:", assignmentid);
+
       const response = await axios.get(`http://127.0.0.1:8000/notify_all/${course_id}/${assignmentid}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
-      setMessage(`${response.data.status}`);
+      setMessage(`${response.data.message}`);
     } catch (error) {
       console.error(error);
     }
@@ -195,7 +198,7 @@ export default function TeacherDashboard() {
   // width: '100%',
   maxWidth: '100vw',  // Use viewport width instead of percentage
   height: '100vh',    // Make it full viewport height
-  overflow: 'hidden', // Prevent scrolling
+   // Prevent scrolling
   p: { xs: 1, sm: 5 },
   display: 'flex',
   justifyContent: 'center',
@@ -1155,6 +1158,7 @@ export default function TeacherDashboard() {
             >
               Create Assignment
             </Button>
+           
             <Divider sx={{ my: 4, backgroundColor: "rgba(157, 68, 192, 0.4)" }} />
             <Typography
               variant="h5"
@@ -1397,7 +1401,7 @@ export default function TeacherDashboard() {
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
+            
           }
           
           body {
