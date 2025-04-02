@@ -193,7 +193,7 @@ const Login = () => {
             overflow: "hidden",
           }}
         >
-          <Fade in={true} timeout={2000}>
+          {/* <Fade in={true} timeout={2000}>
             <Box sx={{ animation: "float 6s ease-in-out infinite", mb: 4 }}>
               <svg width="220" height="220" viewBox="0 0 100 100">
                 <path
@@ -224,7 +224,7 @@ const Login = () => {
                 </defs>
               </svg>
             </Box>
-          </Fade>
+          </Fade> */}
 
           <Slide direction="right" in={true} timeout={800}>
             <Box sx={{ mt: 2, textAlign: "center", position: "relative", zIndex: 2 }}>
