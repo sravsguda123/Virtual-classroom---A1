@@ -54,6 +54,7 @@ courses = db["courses"]
 assignments=db["assignments"]
 submissions=db["submissions"]
 resources=db["resources"]
+attendance=db["attendance"]
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 fs = motor.motor_asyncio.AsyncIOMotorGridFSBucket(db)
@@ -312,6 +313,7 @@ async def like_resource(resource_id: str, user: dict = Depends(verify_token)):
     return {"message": "Resource liked successfully"}
 
 
+
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
     assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
@@ -439,7 +441,33 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
     result = await courses.insert_one(clas)  # Insert into MongoDB
     return {"class_id": str(result.inserted_id)}
     
-
+@app.post("/attendance/{course_id}/{student_id}")
+async def mark_attendance(course_id: str, student_id: str, user: dict = Depends(verify_token)):
+    course = courses.find_one({"class_id": course_id})
+    if not course:
+        
+        raise HTTPException(status_code=404, detail="Course not found")
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can mark attendance")
+    # Check if the student is in the course
+    if student_id not in course["students"]:
+        raise HTTPException(status_code=404, detail="Student not found in course")
+    #update attendance for today
+    today = datetime.utcnow().date()
+    attendance_record = {
+        "date": today,
+        "student_id": student_id,
+        "status": "present"
+    }
+    result = await attendance.update_one(
+        {"class_id": course_id, "date": today},
+        {"$addToSet": {"attendance": attendance_record}},
+        upsert=True  # Create the document if it doesn't exist
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Attendance not updated")
+    print("attendance updated successfully")
+    return {"message": "Attendance marked successfully"}    
 
 @app.get("/students_in_courses/{course_id}")
 async def students_in_courses(course_id: str):
