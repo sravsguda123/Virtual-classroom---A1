@@ -404,7 +404,7 @@ const createMeeting = async () =>{
                     },
                   }}
                 >
-                  Schedule a Meeting
+                  Schedule class
                 </Button>
               </CardContent>
             </Card>
