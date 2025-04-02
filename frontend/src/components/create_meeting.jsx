@@ -94,6 +94,10 @@ export default function GoogleCalendarAuth() {
     }
   };
 
+  const handleAttendance = async () => {
+    navigate(`/attendance/${courseId}/${token}`);
+  }
+
   return (
     <>
       <style>
@@ -472,6 +476,29 @@ export default function GoogleCalendarAuth() {
                           </>
                         )}
                       </Button>
+
+                      <Button
+                        onClick={handleAttendance}
+                        disabled={loading}
+                        className="action-button meet-button hover-scale"
+                        sx={{
+                          backgroundColor: "rgba(76, 175, 80, 0.2)",
+                          color: "#81C784",
+                          "&:hover": {
+                            backgroundColor: "rgba(76, 175, 80, 0.3)",
+                          },
+                        }}
+                      >
+                        {loading ? (
+                          <CircularProgress size={24} sx={{ color: "#81C784" }} />
+                        ) : (
+                          <>
+                            Mark Attendance
+                          </>
+                        )}
+                      </Button>
+
+
                     </Box>
 
                     {/* Meeting Link Display */}
@@ -535,6 +562,10 @@ export default function GoogleCalendarAuth() {
                 >
                   Virtual Classroom Meeting Manager • {new Date().getFullYear()}
                 </Typography>
+
+
+
+
               </Box>
             </Paper>
           </Fade>
@@ -542,4 +573,5 @@ export default function GoogleCalendarAuth() {
       </Container>
     </>
   );
+
 }

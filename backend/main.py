@@ -130,6 +130,7 @@ def verify_token(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 async def verify_token_for_socket(websocket: WebSocket):
     token = websocket.query_params.get("token")
     if not token:
@@ -441,33 +442,41 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
     result = await courses.insert_one(clas)  # Insert into MongoDB
     return {"class_id": str(result.inserted_id)}
     
+from datetime import datetime
+
+
 @app.post("/attendance/{course_id}/{student_id}")
 async def mark_attendance(course_id: str, student_id: str, user: dict = Depends(verify_token)):
-    course = courses.find_one({"class_id": course_id})
+    course = await courses.find_one({"class_id": course_id})
+    
     if not course:
-        
         raise HTTPException(status_code=404, detail="Course not found")
+
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can mark attendance")
+
     # Check if the student is in the course
     if student_id not in course["students"]:
         raise HTTPException(status_code=404, detail="Student not found in course")
-    #update attendance for today
-    today = datetime.utcnow().date()
+
+    # Update attendance for today
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)  # Store with full datetime
+
     attendance_record = {
-        "date": today,
         "student_id": student_id,
         "status": "present"
     }
+
     result = await attendance.update_one(
-        {"class_id": course_id, "date": today},
+        {"class_id": course_id, "date": today},  # Use full datetime object
         {"$addToSet": {"attendance": attendance_record}},
-        upsert=True  # Create the document if it doesn't exist
+        upsert=True
     )
-    if result.modified_count == 0:
+
+    if result.modified_count == 0 and not result.upserted_id:
         raise HTTPException(status_code=400, detail="Attendance not updated")
-    print("attendance updated successfully")
-    return {"message": "Attendance marked successfully"}    
+
+    return {"message": "Attendance marked successfully"}
 
 @app.get("/students_in_courses/{course_id}")
 async def students_in_courses(course_id: str):
