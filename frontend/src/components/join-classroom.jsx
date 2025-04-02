@@ -742,22 +742,64 @@ const JoinClassroom = () => {
                 textAlign: "center"
               }}
             >
-              <ul>
-            {enrolledCourses.length > 0 ? (
-              enrolledCourses.map((course, index) => (
-                <li key={index}>
-  {course} 
-  <Button onClick={() => { 
-      setClassroomId(course); 
-      handleJoinClassroom(course); // ✅ Call function properly
-  }}>
-    Chatroom
-  </Button>
-</li> ))
-        ) : (
-          <p>No enrolled courses found.</p>
-        )}
-      </ul>
+              <Box sx={{ 
+  width: '100%', 
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2, // adds space between items
+}}>
+  {enrolledCourses.length > 0 ? (
+    enrolledCourses.map((course, index) => (
+      <Card key={index} sx={{ 
+        color: "rgba(255,255,255,0.6)",
+        
+        p: 2, 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderRadius: 2,
+        
+        
+        background: 'transparent',
+      }}>
+        <Typography variant="body1">{course}</Typography>
+        <Button 
+          variant="contained" 
+          color="primary"
+          size="small"
+          sx={{
+            py: { xs: 1.5, sm: 2 },
+            px: { xs: 3, sm: 4 },
+            background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)",
+            fontWeight: "500",
+            letterSpacing: "1px",
+            fontSize: "1rem",
+            borderRadius: "12px",
+            fontFamily: "'Poppins', sans-serif",
+            color: "#FFFFFF",
+            boxShadow: "0 4px 10px rgba(157, 68, 192, 0.3)",
+            whiteSpace: "nowrap",
+            
+            "&:hover": {
+              background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)",
+              transform: "translateY(-2px)",
+              boxShadow: "0 6px 25px rgba(157, 68, 192, 0.5)",
+            },
+            transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          }}
+          onClick={() => { 
+            setClassroomId(course); 
+            handleJoinClassroom(course);
+          }}
+        >
+          Chatroom
+        </Button>
+      </Card>
+    ))
+  ) : (
+    <Typography variant="body1">No enrolled courses found.</Typography>
+  )}
+</Box>
 
             </Typography>
           </CardContent>
