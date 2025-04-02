@@ -1,78 +1,92 @@
-
-
 # Virtual Classroom
 
-This is a virtual classroom application with a **FastAPI backend** and a **React frontend (Vite-based)**. The backend runs on \`Uvicorn\` at port \`8000\` and requires a Redis server.
+A comprehensive virtual classroom application with a FastAPI backend and React frontend, providing an interactive online learning environment.
 
-## Setup Instructions
+## Features
 
-### **Backend (FastAPI + Redis)**
-1. Navigate to the backend folder:
-   \`\`\`sh
-   cd backend
-   \`\`\`
-2. Create a virtual environment:
-   \`\`\`sh
-   python -m venv venv
-   \`\`\`
-3. Activate the virtual environment:
-   - **Windows (PowerShell)**:
-     \`\`\`sh
-     venv\Scripts\Activate
-     \`\`\`
-   - **Linux/macOS**:
-     \`\`\`sh
-     source venv/bin/activate
-     \`\`\`
-4. Install dependencies:
-   \`\`\`sh
-   pip install -r requirements.txt
-   \`\`\`
-5. Start the Redis server (Ensure Redis is installed):
-   \`\`\`sh
-   redis-server
-   \`\`\`
-6. Run the FastAPI backend:
-   \`\`\`sh
-   uvicorn main:app --reload --host 0.0.0.0 --port 8000
-   \`\`\`
+- Real-time attendance tracking
+- Integrated video conferencing
+- Secure file sharing and management
+- Interactive classroom UI
 
-### **Frontend (React + Vite)**
-1. Navigate to the frontend folder:
-   \`\`\`sh
-   cd frontend
-   \`\`\`
-2. Install dependencies:
-   \`\`\`sh
-   npm install
-   \`\`\`
-3. Start the frontend:
-   \`\`\`sh
-   npm run dev
-   \`\`\`
+## Technology Stack
 
-## Git Workflow
+### Backend
+- FastAPI
+- Uvicorn
+- Redis
 
-1. Clone the repository:
-   \`\`\`sh
+### Frontend
+- React
+- Vite
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.7+
+- Node.js 14+
+- Redis server
+
+### Backend Setup
+
+1. **Clone the repository**
+   ```bash
    git clone https://github.com/GuhaneshT/Virtual-classroom---A1.git
-   \`\`\`
-2. Create a new branch for your feature:
-   \`\`\`sh
-   git checkout -b feature-name
-   \`\`\`
-3. Make changes and commit:
-   \`\`\`sh
-   git add .
-   git commit -m "Added feature-name"
-   \`\`\`
-4. Push the branch to GitHub:
-   \`\`\`sh
-   git push origin feature-name
-   \`\`\`
-5. Create a pull request (PR) on GitHub and wait for review.
+   cd Virtual-classroom---A1/backend
+   ```
 
-## Contributions
-All contributions should go through pull requests. The \`main\` branch is protected.
+2. **Create a virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
 
-EOL
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Start Redis server**
+   Ensure Redis is installed and running:
+   ```bash
+   redis-server
+   ```
+
+5. **Run the FastAPI application**
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+   The API will be available at http://localhost:8000
+
+### Frontend Setup
+
+1. **Navigate to the frontend directory**
+   ```bash
+   cd ../frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   The frontend will typically be accessible at http://localhost:3000
+
+## API Documentation
+
+When the backend server is running, API documentation is available at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+## License
+
+This project is copyright protected. No license has been specified.
+
+## Contributing
+
+For details on contributing to this project, please contact the repository owner.

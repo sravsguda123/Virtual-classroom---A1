@@ -13,6 +13,7 @@ import GoogleCalendarAuth from "./components/create_meeting.jsx";
 import TeacherGrade from "./components/TeacherGrade.jsx";
 import StudentGrade from "./components/StudentGrade.jsx";
 import StudentSubmissions from "./components/StudentSubmissions.jsx";
+import Attendance from "./components/attendance.jsx";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/grade/:assignmentId" element={<TeacherGrade />} />
         <Route path="/grade_view/:submissionId" element={<StudentGrade />} />
         <Route path="/my-submissions" element={<StudentSubmissions />} />
+        <Route path="/attendance/:courseId/:token" element={<Attendance />} />
       </Routes>
     </Router>
     

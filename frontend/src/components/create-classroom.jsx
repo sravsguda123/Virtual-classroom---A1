@@ -1129,7 +1129,36 @@ export default function TeacherDashboard() {
                     letterSpacing: "2px",
                   }}
                 >
-                  Teacher Dashboard
+
+                  Schedule class
+                </Button>
+              </CardContent>
+            </Card>
+          </Slide>
+
+          {/* Enrolled Students Section */}
+          <Slide direction="up" in={true} timeout={1000} style={{ transitionDelay: "600ms" }}>
+            <Card
+              className="neon-glow"
+              sx={{
+                mb: 4,
+                backgroundColor: "rgba(26, 0, 51, 0.85)",
+                borderRadius: "24px",
+                border: "1px solid rgba(157, 68, 192, 0.4)",
+              }}
+            >
+              <CardContent sx={{ p: 4 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: "#FFFFFF",
+                    fontFamily: "'Playfair Display', serif",
+                    fontWeight: 500,
+                    mb: 3,
+                  }}
+                >
+                  See Enrolled Students
+
                 </Typography>
                 <Typography
                   variant="body2"
