@@ -627,6 +627,7 @@ const JoinClassroom = () => {
   const params = new URLSearchParams(location.search);
   const token = params.get("token") || localStorage.getItem("token");
   const [classroomId, setClassroomId] = useState("");
+  const [student_id, setStudentId] = useState("");
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [studentData, setStudentData] = useState({
@@ -638,6 +639,7 @@ const JoinClassroom = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
 
   // Demo function to fetch student data
   useEffect(() => {
@@ -679,7 +681,7 @@ const JoinClassroom = () => {
     fetchSubmissions();
   }, []);
 
-  const handleJoinClassroom = async () => {
+  const handleJoinClassroom = async (classId = classroomId) => {
     
 
     if (!token) {
@@ -688,16 +690,12 @@ const JoinClassroom = () => {
       return;
     }
 
-    if (!classroomId.trim()) {
-      setMessage("Please enter a valid Course ID.");
-      setShowMessage(true);
-      return;
-    }
+  
 
     try {
       const response = await axios.post(
         `http://127.0.0.1:8000/join_classroom`,
-        { class_id: classroomId },
+        { class_id: classId },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -709,7 +707,7 @@ const JoinClassroom = () => {
       setMessage(response.data.message || "Successfully joined the course!");
       setShowMessage(true);
       setClassroomId("");
-      navigate(`/chatroom/${classroomId}?token=${token}`);
+      navigate(`/chatroom/${classId}?token=${token}`);
     } catch (error) {
       console.error(error);
       setMessage(error.response?.data?.message || "Failed to join classroom. Check the course ID.");
@@ -737,6 +735,22 @@ const JoinClassroom = () => {
       navigate(`/grade_view/${submissionId}?token=${token}`);
     }
   };
+  const handleEnrolledCourses = async () => {
+    try{
+    const response = await axios.get(`http://127.0.0.1:8000/courses_in_student`,{
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log(response.data);
+    console.log(response.data.courses);
+    setEnrolledCourses(response.data.courses);
+  }catch (error) {
+    console.error("Error fetching enrolled courses:", error);
+  }
+    
+
+  }
 
   return (
     <>
@@ -1244,7 +1258,7 @@ const JoinClassroom = () => {
               
               <Button
                 variant="contained"
-                onClick={handleJoinClassroom}
+                onClick={() => handleJoinClassroom()}
                 sx={{
                   py: { xs: 1.5, sm: 2 },
                   px: { xs: 3, sm: 4 },
@@ -1269,6 +1283,38 @@ const JoinClassroom = () => {
               >
                 Register
               </Button>
+
+
+
+              <Button
+                variant="contained"
+                onClick={handleEnrolledCourses}
+                sx={{
+                  py: { xs: 1.5, sm: 2 },
+                  px: { xs: 3, sm: 4 },
+                  background: "linear-gradient(45deg, #9D44C0 0%, #6C3483 100%)",
+                  fontWeight: "500",
+                  letterSpacing: "1px",
+                  fontSize: "1rem",
+                  borderRadius: "12px",
+                  fontFamily: "'Poppins', sans-serif",
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 20px rgba(157, 68, 192, 0.3)",
+                  whiteSpace: "nowrap",
+                  minWidth: { xs: "100%", sm: "auto" },
+                  "&:hover": {
+                    background: "linear-gradient(45deg, #8E24AA 0%, #6A1B9A 100%)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 6px 25px rgba(157, 68, 192, 0.5)",
+                  },
+                  transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                }}
+                endIcon={<ArrowForward />}
+              >
+                See Enrolled Courses
+              </Button>
+              
+
             </Box>
             
             <Typography
@@ -1281,7 +1327,23 @@ const JoinClassroom = () => {
                 textAlign: "center"
               }}
             >
-              Enter the course ID provided by your instructor to join the class
+              <ul>
+            {enrolledCourses.length > 0 ? (
+              enrolledCourses.map((course, index) => (
+                <li key={index}>
+  {course} 
+  <Button onClick={() => { 
+      setClassroomId(course); 
+      handleJoinClassroom(course); // ✅ Call function properly
+  }}>
+    Chatroom
+  </Button>
+</li> ))
+        ) : (
+          <p>No enrolled courses found.</p>
+        )}
+      </ul>
+
             </Typography>
           </CardContent>
         </Card>

@@ -313,8 +313,6 @@ async def like_resource(resource_id: str, user: dict = Depends(verify_token)):
 
     return {"message": "Resource liked successfully"}
 
-
-
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
     assignment = await assignments.find({"course_id": course_id}).to_list(length=100)
@@ -489,6 +487,18 @@ async def students_in_courses(course_id: str):
     print(classroom["students"])
     return {"students": classroom["students"]}
     
+@app.get("/courses_in_student")
+async def students_in_courses(user: dict = Depends(verify_token)):
+    return_courses = []
+    student_id = user["id"]
+
+    # Fetch all courses asynchronously
+    async for course in courses.find():
+        if "students" in course and student_id in course["students"]:
+            return_courses.append(course["class_id"])  # Change if you need full details
+    print(return_courses)
+    return {"courses": return_courses}
+  
 @app.post("/join_classroom")
 async def join_classroom(
     request: JoinClassroomRequest, user: dict = Depends(verify_token)
