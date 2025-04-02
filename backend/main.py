@@ -21,6 +21,25 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from neo4j import GraphDatabase
+
+# Wait 60 seconds before connecting using these details, or login to https://console.neo4j.io to validate the Aura Instance is available
+NEO4J_URI="neo4j+s://ebfa7512.databases.neo4j.io"
+NEO4J_USERNAME="neo4j"
+NEO4J_PASSWORD="jLoV180G6Z0vS6P2UsHB3oVHOzxdqRUWesr0VRtMmkA"
+# AURA_INSTANCEID=ebfa7512
+# AURA_INSTANCENAME=Instance01
+
+URI = NEO4J_URI
+
+AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
+
+try:
+    with GraphDatabase.driver(URI, auth=AUTH) as driver:
+        driver.verify_connectivity()
+    print("✅ Knowledge Base connection successful!")
+except Exception as e:
+    print("❌ Knowledge Base connection failed:", e)
 
 kw_model = KeyBERT()
 MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
@@ -186,32 +205,57 @@ async def login(request: LoginRequest):
 
 @app.post("/upload")
 async def upload_resource(
-    file: Optional[UploadFile] = File(None), 
-    title: str = Form(""), 
-    description: str = Form("")
+    file: UploadFile = File(None),  # ✅ File(None) is enough
+    title: str = Form(""),
+    description: str = Form(""),
+    user: dict = Depends(verify_token),
 ):
-    print(f"Received title: {title}")  # Debugging
-    print(f"Received description: {description}")  # Debugging
-    
+    print(f"Received title: {title}")
+    print(f"Received description: {description}")
+
     file_id = None
     if file:
-        file_id = await fs.upload_from_stream(file.filename, file.file)
+        file_content = await file.read()  # Ensure async read
+        file_id = await fs.upload_from_stream(file.filename, file_content)
+        print(f"Uploaded file ID: {file_id}")
 
     response = generate_tags(description)
-    tags = response
+    tags = [tag.strip() for tag in response]
 
     resource_doc = {
         "title": title,
         "description": description,
-        "tags": [tag.strip() for tag in tags],
+        "tags": tags,
         "file_id": file_id,
         "score": 0,
         "likes": 0,
         "downloads": 0,
         "views": 0,
     }
-
     result = await resources.insert_one(resource_doc)
+
+    try:
+        with driver.session() as session:  # ✅ Use a proper Neo4j session
+            session.run(
+                """
+                MERGE (r:Resource {id: $id, title: $title, description: $description})
+                WITH r
+                UNWIND $tags AS tag
+                MERGE (t:Tag {name: tag})
+                MERGE (r)-[:TAGGED_AS]->(t)
+                MERGE (u:User {id: $user_id})
+                MERGE (u)-[:UPLOADED]->(r)
+                """,
+                id=str(result.inserted_id),  # ✅ Convert ObjectId to string
+                title=title,
+                description=description,
+                tags=tags,
+                user_id=user["id"],
+            )
+        print("✅ Resource inserted into Neo4j successfully!")
+    except Exception as e:
+        print(f"❌ Error inserting into Neo4j: {e}")
+
     return {"id": str(result.inserted_id), "tags": tags}
 
 @app.get("/search")
@@ -227,6 +271,46 @@ async def search_resources(tags: List[str] = Query(...)):
             doc["file_id"] = str(doc["file_id"])
     
     return search_results
+
+from fastapi import HTTPException
+
+@app.post("/like/{resource_id}")
+async def like_resource(resource_id: str, user: dict = Depends(verify_token)):
+    # Check if the resource exists
+    resource = await resources.find_one({"_id": ObjectId(resource_id)})
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    # Increment the likes count in MongoDB
+    await resources.update_one({"_id": ObjectId(resource_id)}, {"$inc": {"likes": 1}})
+
+    # Retrieve updated resource to recalculate score
+    updated_resource = await resources.find_one({"_id": ObjectId(resource_id)})
+
+    # Update the score based on new like count
+    new_score = calculate_score(updated_resource)
+    await resources.update_one({"_id": ObjectId(resource_id)}, {"$set": {"score": new_score}})
+
+    # Update in Neo4j
+    try:
+        with driver.session() as session:
+            session.run(
+            """
+            MATCH (r:Resource {id: $id})
+            SET r.likes = COALESCE(r.likes, 0) + 1
+            WITH r
+            MATCH (u:User {id: $user_id})
+            MERGE (u)-[:LIKED]->(r)  
+            """,
+            id=str(resource_id),  
+            user_id=user["id"]    
+        )
+        print("✅ Resource likes updated in Neo4j successfully!")
+    except Exception as e:
+        print(f"❌ Error updating likes in Neo4j: {e}")
+
+    return {"message": "Resource liked successfully"}
+
 
 @app.get("/assignments/{course_id}")
 async def get_assignment(course_id: str):
@@ -705,3 +789,6 @@ async def my_submissions(user: dict = Depends(verify_token)):
             sub["file_id"] = str(sub["file_id"])
     
     return student_submissions
+
+
+

@@ -40,12 +40,31 @@ export default function ResourceSharing() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token")
   
   useEffect(() => {
     // Stagger animations for a more elegant entrance
     setTimeout(() => setShowForm(true), 500);
   }, []);
-  
+  const handleLike = async (res_id) => {
+    try {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/like/${res_id}`,
+        {}, // Empty body
+        {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("Like response:", response.data); // Debugging
+    } catch (error) {
+      console.error("Like failed", error);
+      setError("Like failed. Please try again.");
+      setShowError(true);
+    }
+  };
   const handleSearch = async () => {
     try {
       setLoading(true);
@@ -90,7 +109,10 @@ export default function ResourceSharing() {
       console.log("Sending description:", description); // Debugging
   
       const response = await axios.post("http://127.0.0.1:8000/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data", 
+          "Authorization": `Bearer ${token}`
+        },
+        
       });
   
       setSuccess(true);
@@ -739,7 +761,8 @@ export default function ResourceSharing() {
                               >
                                 {res.title}
                               </Typography>
-                              
+                              <Button onClick={() => handleLike(res._id)}>Like</Button>
+
                               <Typography 
                                 variant="body2"
                                 sx={{
