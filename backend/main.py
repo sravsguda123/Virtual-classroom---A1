@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response, Request
+from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect,File, UploadFile,Response, Request,Form,Query
 from redis import Redis
 import jwt
 from pydantic import BaseModel
@@ -22,17 +22,23 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from neo4j import GraphDatabase
+import io
+from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-# Wait 60 seconds before connecting using these details, or login to https://console.neo4j.io to validate the Aura Instance is available
-NEO4J_URI="neo4j+s://ebfa7512.databases.neo4j.io"
-NEO4J_USERNAME="neo4j"
-NEO4J_PASSWORD="jLoV180G6Z0vS6P2UsHB3oVHOzxdqRUWesr0VRtMmkA"
-# AURA_INSTANCEID=ebfa7512
-# AURA_INSTANCENAME=Instance01
 
-URI = NEO4J_URI
+kw_model = KeyBERT()
 
-AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
+load_dotenv()  # Load environment variables from .env file
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+MONGO_URI = os.getenv("MONGO_URI")
 
 try:
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
@@ -41,13 +47,9 @@ try:
 except Exception as e:
     print("❌ Knowledge Base connection failed:", e)
 
-kw_model = KeyBERT()
-MONGO_URI = "mongodb+srv://Prashanna:detroicitus@cluster1.b5qzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
-
+#mongo related
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 db = mongo_client["virtual_classroom"]  # Ensure "virtual_classroom" is your actual database name
-
-# Define the collection
 collection = db["notifications"] 
 users = db["users"]
 courses = db["courses"]
@@ -56,18 +58,24 @@ submissions=db["submissions"]
 resources=db["resources"]
 attendance=db["attendance"]
 
+
+
+
+def load_credentials():
+    """Load credentials from token.json if available."""
+    if os.path.exists(TOKEN_FILE):
+        return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    return None
+
+
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 fs = motor.motor_asyncio.AsyncIOMotorGridFSBucket(db)
-import io
-# Constants
-SECRET_KEY = "S1rtcbbygv8sxgjkptmkekxnakwbrz5kzoiocf0zur3j6qj9m2z"
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
 
+
+#google api related
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
-CLIENT_SECRET_FILE = "client_secret.json"  # Make sure this file exists
+CLIENT_SECRET_FILE = "client_secret.json"  
 REDIRECT_URI = "http://127.0.0.1:8000/oauth2callback"
-
 TOKEN_FILE = "token.json"  # Token storage
 
 
@@ -80,20 +88,22 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
 )
-redis_host = "localhost"  # The host of the remote Redis service
-redis_port = 6379  # Usually 6379 for Redis # If authentication is required
 
-#Connect to the remote Redis API
-redis_client = redis.Redis(
-    host=redis_host,
-    port=redis_port,)
 
+# redis_host = "localhost"  # The host of the remote Redis service
+# redis_port = 6379  # Usually 6379 for Redis # If authentication is required
+
+# #Connect to the remote Redis API
 # redis_client = redis.Redis(
-#     host='equipped-gnat-18381.upstash.io',
-#     port=6379,
-#     password="AUfNAAIjcDE1YTAyMDBlNjVhMzM0MTlhOTk0MWNjNjY0MWM1NDE5M3AxMA",
-#     ssl=True
-# )
+#     host=redis_host,
+#     port=redis_port,)
+
+redis_client = redis.Redis(
+    host='equipped-gnat-18381.upstash.io',
+    port=6379,
+    password="AUfNAAIjcDE1YTAyMDBlNjVhMzM0MTlhOTk0MWNjNjY0MWM1NDE5M3AxMA",
+    ssl=True
+)
 
 @app.on_event("startup")
 async def show_routes():
@@ -118,7 +128,7 @@ def convert_mongo_document(doc):
         return doc
 
 
-
+#verification of jwt token
 def verify_token(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token format")
@@ -130,7 +140,6 @@ def verify_token(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-
 async def verify_token_for_socket(websocket: WebSocket):
     token = websocket.query_params.get("token")
     if not token:
@@ -147,6 +156,8 @@ async def verify_token_for_socket(websocket: WebSocket):
 def generate_tags(text):
     keywords = kw_model.extract_keywords(text, keyphrase_ngram_range=(1, 2), stop_words='english')
     return [kw[0] for kw in keywords]
+
+#requests
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -174,24 +185,24 @@ class Resource(BaseModel):
     tags:list[str]=[]
     score:int=0
 
-def insert_first():
-    users.insert_one({
-   "user_id": "student1",
-   "password": "password",
-   "role": "student"
-})
-    users.insert_one({
-   "user_id": "student2",
-   "password": "password",
-   "role": "student"
-})
-    users.insert_one({
-   "user_id": "teacher1",
-   "password": "password",
-   "role": "teacher"
-})
-    print("Users inserted successfully!")
-from fastapi import Query,Form
+# def insert_first():
+#     users.insert_one({
+#    "user_id": "student1",
+#    "password": "password",
+#    "role": "student"
+# })
+#     users.insert_one({
+#    "user_id": "student2",
+#    "password": "password",
+#    "role": "student"
+# })
+#     users.insert_one({
+#    "user_id": "teacher1",
+#    "password": "password",
+#    "role": "teacher"
+# })
+#     print("Users inserted successfully!")
+# from fastapi import Query,Form
 
 @app.post("/login")
 async def login(request: LoginRequest):
@@ -273,8 +284,6 @@ async def search_resources(tags: List[str] = Query(...)):
             doc["file_id"] = str(doc["file_id"])
     
     return search_results
-
-from fastapi import HTTPException
 
 @app.post("/like/{resource_id}")
 async def like_resource(resource_id: str, user: dict = Depends(verify_token)):
@@ -440,9 +449,6 @@ async def create_classroom(request: CreateClassroomRequest, user: dict = Depends
     result = await courses.insert_one(clas)  # Insert into MongoDB
     return {"class_id": str(result.inserted_id)}
     
-from datetime import datetime
-
-
 @app.post("/attendance/{course_id}/{student_id}")
 async def mark_attendance(course_id: str, student_id: str, user: dict = Depends(verify_token)):
     course = await courses.find_one({"class_id": course_id})
@@ -657,7 +663,6 @@ async def send_notification_to_all( course_id: str,meet_link: str = Query(...)):
             
     return {"message": "Notification sent to all students"}
 
-
 @app.websocket("/ws/{class_id}")
 async def classroom_websocket(websocket: WebSocket, class_id: str):
     # Extract the token from the query parameter
@@ -719,20 +724,12 @@ async def classroom_websocket(websocket: WebSocket, class_id: str):
         pubsub.close()  # Close Redis pubsub
         await websocket.close()  # Close WebSocket connection
 
-def load_credentials():
-    """Load credentials from token.json if available."""
-    if os.path.exists(TOKEN_FILE):
-        return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    return None
-
-
 @app.get("/auth")
 def authenticate():
     
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES, redirect_uri=REDIRECT_URI)
     auth_url, _ = flow.authorization_url(prompt="consent")
     return RedirectResponse(auth_url)
-
 
 @app.get("/oauth2callback")
 async def oauth_callback(request: Request):
@@ -748,7 +745,6 @@ async def oauth_callback(request: Request):
         token_file.write(credentials.to_json())
 
     return JSONResponse({"message": "Authentication successful! You can now create events."})
-
 
 @app.get("/create-event")
 def create_event():
@@ -777,7 +773,6 @@ def create_event():
 
     return {"meet_link": event.get("hangoutLink", "No Meet link generated")}
     
-
 @app.post("/grade_submission")
 async def grade_submission(
     submission_id: str = Form(...),
@@ -818,7 +813,6 @@ async def my_mark(submission_id: str, user: dict = Depends(verify_token)):
     if user["role"] == "student" and submission.get("student_id") != user["id"]:
         raise HTTPException(status_code=403, detail="You are not authorized to view this submission's mark")
     return {"submission_id": submission_id, "mark": submission.get("mark")}
-
 
 @app.get("/my_submissions")
 async def my_submissions(user: dict = Depends(verify_token)):
